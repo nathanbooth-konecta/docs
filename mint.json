@@ -11,10 +11,6 @@
     "primary": "#01378C",              // Konecta Blue
     "light": "#E5F2FB",                // Light Blue background
     "dark": "#00254F",                 // Very dark blue (from main nav/footer)
-    "secondary": "#38B6FF",            // Bright secondary blue
-    "accent": "#19D28C",               // Green accent (action, buttons)
-    "warning": "#FF8200",              // Orange, used for highlights
-    "info": "#B7DBFF",                 // Light Info blue
     "anchors": {
       "from": "#01378C",
       "to": "#38B6FF"

@@ -1,19 +1,23 @@
 {
   "$schema": "https://mintlify.com/schema.json",
   "name": "Google Cloud Infrastructure for Agentic AI",
-  "theme": "venus",
+  "theme": "willow",
   "logo": {
     "dark": "/logo/Konecta_Logo_RGB_White.png",
     "light": "/logo/Konecta_Logo_RGB_Blue.png"
   },
-  "favicon": "/favicon.ico",
+  "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#4285F4",
-    "light": "#4285F4",
-    "dark": "#4285F4",
+    "primary": "#01378C",              // Konecta Blue
+    "light": "#E5F2FB",                // Light Blue background
+    "dark": "#00254F",                 // Very dark blue (from main nav/footer)
+    "secondary": "#38B6FF",            // Bright secondary blue
+    "accent": "#19D28C",               // Green accent (action, buttons)
+    "warning": "#FF8200",              // Orange, used for highlights
+    "info": "#B7DBFF",                 // Light Info blue
     "anchors": {
-      "from": "#4285F4",
-      "to": "#34A853"
+      "from": "#01378C",
+      "to": "#38B6FF"
     }
   },
   "topbarLinks": [

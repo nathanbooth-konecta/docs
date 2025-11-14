@@ -1,0 +1,130 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "willow",
+  "name": "Google Cloud Infrastructure for Agentic AI",
+  "colors": {
+    "primary": "#01378C",
+    "light": "#E5F2FB",
+    "dark": "#00254F"
+  },
+  "favicon": "/favicon.ico",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "index",
+          "overview",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
+          "architecture/overview",
+          "architecture/design-principles",
+          "architecture/component-diagram",
+          "architecture/blueprints",
+          "architecture/networking",
+          "architecture/security-architecture"
+        ]
+      },
+      {
+        "group": "Terraform",
+        "pages": [
+          "terraform/overview",
+          "terraform/directory-structure",
+          "terraform/modules",
+          "terraform/variables",
+          "terraform/outputs",
+          "terraform/state-management",
+          "terraform/best-practices"
+        ]
+      },
+      {
+        "group": "Developer Guide",
+        "pages": [
+          "developer-guide/prerequisites",
+          "developer-guide/setup",
+          "developer-guide/authentication",
+          "developer-guide/deployment",
+          "developer-guide/testing",
+          "developer-guide/troubleshooting",
+          "developer-guide/local-development"
+        ]
+      },
+      {
+        "group": "Services & Components",
+        "pages": [
+          "services/compute",
+          "services/storage",
+          "services/networking",
+          "services/security",
+          "services/monitoring",
+          "services/ai-services"
+        ]
+      },
+      {
+        "group": "Security & Compliance",
+        "pages": [
+          "security/overview",
+          "security/iam",
+          "security/data-protection",
+          "security/compliance",
+          "security/audit-logging"
+        ]
+      },
+      {
+        "group": "CI/CD",
+        "pages": [
+          "cicd/overview",
+          "cicd/pipeline",
+          "cicd/automated-testing",
+          "cicd/deployment-strategies"
+        ]
+      },
+      {
+        "group": "Operations",
+        "pages": [
+          "operations/monitoring",
+          "operations/logging",
+          "operations/incident-response",
+          "operations/change-management",
+          "operations/backup-recovery"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/glossary",
+          "reference/faq",
+          "reference/changelog",
+          "reference/api-reference"
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/Konecta_Logo_RGB_Blue.png",
+    "dark": "/logo/Konecta_Logo_RGB_White.png"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@example.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "GitHub",
+      "href": "https://github.com/your-org/your-repo"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/your-org/your-repo",
+      "linkedin": "https://www.linkedin.com/company/your-org"
+    }
+  }
+}

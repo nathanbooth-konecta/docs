@@ -1,0 +1,273 @@
+---
+title: Security Overview
+description: Security architecture and controls for the Google Cloud infrastructure
+---
+
+# Security Overview
+
+This document provides an overview of the security architecture, controls, and best practices implemented in the Google Cloud infrastructure for Agentic AI solutions.
+
+## Security Principles
+
+Our security approach is built on these core principles:
+
+1. **Zero Trust**: Never trust, always verify
+2. **Defense in Depth**: Multiple layers of security controls
+3. **Least Privilege**: Grant minimum necessary permissions
+4. **Encryption Everywhere**: Encrypt data at rest and in transit
+5. **Audit Everything**: Comprehensive logging and monitoring
+6. **Secure by Default**: Security built into every component
+
+## Security Layers
+
+### 1. Identity and Access Management (IAM)
+
+**Service Accounts**
+- Dedicated service accounts for each application/service
+- Minimal required permissions per service account
+- Workload Identity for GKE (if applicable)
+
+**User Access**
+- Role-based access control (RBAC)
+- Custom IAM roles with least privilege
+- Regular access reviews and audits
+- Multi-factor authentication (MFA) required
+
+**Organization Policies**
+- Enforce security policies at the organization level
+- Prevent insecure configurations
+- Require specific security settings
+
+### 2. Network Security
+
+**VPC Configuration**
+- Private subnets for internal resources
+- Public subnets only when necessary
+- Network segmentation by function
+
+**Firewall Rules**
+- Default deny-all ingress
+- Explicit allow rules for required traffic
+- Network tags for resource grouping
+- Service account-based firewall rules
+
+**Private Google Access**
+- Enable private access to Google APIs
+- No public IPs required for API access
+- Reduced attack surface
+
+**VPC Service Controls**
+- Perimeter security for APIs
+- Prevent data exfiltration
+- Control service-to-service communication
+
+### 3. Data Protection
+
+**Encryption at Rest**
+- Cloud Storage: Encrypted by default
+- Cloud SQL: Encryption enabled
+- Compute Engine: Encrypted persistent disks
+- Cloud KMS for key management
+
+**Encryption in Transit**
+- TLS 1.2+ for all external communications
+- Internal service-to-service: mTLS where possible
+- SSL/TLS termination at load balancers
+
+**Key Management**
+- Cloud KMS for encryption keys
+- Key rotation policies
+- Separate keys per environment
+- Audit logging for key usage
+
+### 4. Secrets Management
+
+**Secret Manager**
+- Store API keys, passwords, and certificates
+- Versioning and rotation support
+- IAM-based access control
+- Audit logging
+
+**Best Practices**
+- Never commit secrets to Git
+- Use Secret Manager for all secrets
+- Rotate secrets regularly
+- Limit access to secrets
+
+### 5. Application Security
+
+**Container Security**
+- Scan container images for vulnerabilities
+- Use minimal base images
+- Run as non-root user
+- Regular image updates
+
+**API Security**
+- API authentication and authorization
+- Rate limiting
+- Input validation
+- Output encoding
+
+**Dependency Management**
+- Regular dependency updates
+- Vulnerability scanning
+- License compliance
+
+### 6. Monitoring and Logging
+
+**Cloud Logging**
+- Centralized log aggregation
+- Log retention policies
+- Log-based metrics and alerts
+- Export to BigQuery for analysis
+
+**Cloud Monitoring**
+- Security event monitoring
+- Anomaly detection
+- Alerting on security events
+- Custom dashboards
+
+**Cloud Audit Logs**
+- Admin activity logs
+- Data access logs
+- System event logs
+- Compliance and forensics
+
+## Security Controls by Component
+
+### Compute Resources
+
+- **Shielded VMs**: Secure boot, vTPM, integrity monitoring
+- **OS Login**: SSH key management via IAM
+- **Firewall Rules**: Restrictive ingress/egress
+- **Service Accounts**: Minimal permissions
+
+### Storage
+
+- **Bucket Policies**: IAM and ACL controls
+- **Encryption**: Default encryption enabled
+- **Versioning**: Protect against accidental deletion
+- **Lifecycle Policies**: Automatic data management
+
+### Databases
+
+- **Private IP**: No public IP addresses
+- **Encryption**: At rest and in transit
+- **Backups**: Encrypted backups
+- **Access Control**: IAM and database users
+
+### Networking
+
+- **VPC**: Isolated network environment
+- **Cloud Armor**: DDoS protection and WAF
+- **Cloud NAT**: Outbound traffic through NAT
+- **Private Service Connect**: Secure service access
+
+## Compliance
+
+### Standards and Frameworks
+
+- **SOC 2**: Security and availability controls
+- **ISO 27001**: Information security management
+- **GDPR**: Data protection and privacy
+- **HIPAA**: Healthcare data protection (if applicable)
+
+### Compliance Controls
+
+- Regular security assessments
+- Vulnerability scanning
+- Penetration testing
+- Compliance audits
+- Documentation and evidence
+
+## Incident Response
+
+### Detection
+
+- Automated security monitoring
+- Alerting on suspicious activities
+- Threat intelligence integration
+- Regular security reviews
+
+### Response
+
+- Incident response procedures
+- Escalation paths
+- Communication plans
+- Post-incident reviews
+
+### Recovery
+
+- Backup and restore procedures
+- Disaster recovery plans
+- Business continuity planning
+- Lessons learned process
+
+## Security Best Practices
+
+### For Developers
+
+1. **Never commit secrets** to version control
+2. **Use service accounts** with minimal permissions
+3. **Validate inputs** in applications
+4. **Keep dependencies updated**
+5. **Follow secure coding practices**
+
+### For Operators
+
+1. **Regular security updates** for all resources
+2. **Monitor security alerts** and respond promptly
+3. **Review access logs** regularly
+4. **Rotate credentials** on schedule
+5. **Conduct security audits** periodically
+
+### For Administrators
+
+1. **Enforce organization policies**
+2. **Regular access reviews**
+3. **Security training** for team
+4. **Incident response drills**
+5. **Stay current** with security advisories
+
+## Security Checklist
+
+Before deploying to production:
+
+- [ ] All secrets stored in Secret Manager
+- [ ] IAM roles follow least privilege
+- [ ] Encryption enabled for all storage
+- [ ] Firewall rules are restrictive
+- [ ] VPC Service Controls configured
+- [ ] Monitoring and alerting enabled
+- [ ] Audit logging enabled
+- [ ] Backup and recovery tested
+- [ ] Security documentation updated
+- [ ] Team trained on security procedures
+
+## Security Resources
+
+### Internal
+
+- [IAM Configuration](/security/iam)
+- [Data Protection](/security/data-protection)
+- [Compliance](/security/compliance)
+- [Audit Logging](/security/audit-logging)
+
+### External
+
+- [Google Cloud Security](https://cloud.google.com/security)
+- [Terraform Security Best Practices](https://www.terraform.io/docs/cloud/guides/security.html)
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+
+## Next Steps
+
+- [IAM Configuration](/security/iam) - Detailed IAM setup
+- [Data Protection](/security/data-protection) - Encryption and data security
+- [Compliance](/security/compliance) - Compliance requirements and controls
+
+---
+
+**Related Documentation**:
+- [Architecture Overview](/architecture/overview)
+- [Operations Monitoring](/operations/monitoring)
+

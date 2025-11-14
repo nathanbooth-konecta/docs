@@ -1,0 +1,467 @@
+---
+title: Networking Architecture
+description: Detailed networking architecture and configuration
+---
+
+# Networking Architecture
+
+This document describes the networking architecture for the Google Cloud infrastructure supporting Agentic AI solutions.
+
+## Network Topology
+
+### VPC Structure
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    VPC: agentic-ai-vpc                      │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Region: us-central1 (Primary)                       │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐  │  │
+│  │  │  Subnet:     │  │  Subnet:     │  │  Subnet:  │  │  │
+│  │  │  compute     │  │  services    │  │  database │  │  │
+│  │  │  10.0.1.0/24 │  │  10.0.2.0/24 │  │10.0.3.0/24│  │  │
+│  │  └──────────────┘  └──────────────┘  └───────────┘  │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Region: us-east1 (Secondary)                        │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐  │  │
+│  │  │  Subnet:     │  │  Subnet:     │  │  Subnet:  │  │  │
+│  │  │  compute     │  │  services    │  │  database │  │  │
+│  │  │  10.1.1.0/24 │  │  10.1.2.0/24 │  │10.1.3.0/24│  │  │
+│  │  └──────────────┘  └──────────────┘  └───────────┘  │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │  Region: europe-west1 (Tertiary)                     │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐  │  │
+│  │  │  Subnet:     │  │  Subnet:     │  │  Subnet:  │  │  │
+│  │  │  compute     │  │  services    │  │  database │  │  │
+│  │  │  10.2.1.0/24 │  │  10.2.2.0/24 │  │10.2.3.0/24│  │  │
+│  │  └──────────────┘  └──────────────┘  └───────────┘  │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## VPC Configuration
+
+### VPC Network
+
+```hcl
+resource "google_compute_network" "main" {
+  name                    = "agentic-ai-vpc"
+  auto_create_subnetworks = false
+  routing_mode            = "REGIONAL"
+  
+  mtu = 1460
+}
+```
+
+### Subnets
+
+#### Compute Subnet
+- **Purpose**: Hosts Compute Engine instances
+- **CIDR**: 10.0.1.0/24 (per region)
+- **Private Google Access**: Enabled
+- **Flow Logs**: Enabled
+
+#### Services Subnet
+- **Purpose**: Hosts Cloud Run, GKE, and other services
+- **CIDR**: 10.0.2.0/24 (per region)
+- **Private Google Access**: Enabled
+- **Flow Logs**: Enabled
+
+#### Database Subnet
+- **Purpose**: Hosts Cloud SQL and other databases
+- **CIDR**: 10.0.3.0/24 (per region)
+- **Private Google Access**: Enabled
+- **Flow Logs**: Enabled
+
+## Firewall Rules
+
+### Ingress Rules
+
+#### Allow HTTP/HTTPS from Load Balancer
+```hcl
+resource "google_compute_firewall" "allow_lb_http" {
+  name    = "allow-lb-http"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+  target_tags   = ["http-server", "https-server"]
+}
+```
+
+#### Allow Internal Communication
+```hcl
+resource "google_compute_firewall" "allow_internal" {
+  name    = "allow-internal"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = ["10.0.0.0/8"]
+}
+```
+
+#### Allow SSH (Restricted)
+```hcl
+resource "google_compute_firewall" "allow_ssh" {
+  name    = "allow-ssh"
+  network = google_compute_network.main.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]  # Restrict to specific IPs in production
+  target_tags   = ["ssh-allowed"]
+}
+```
+
+### Egress Rules
+
+#### Allow Outbound Internet
+```hcl
+resource "google_compute_firewall" "allow_egress_internet" {
+  name      = "allow-egress-internet"
+  network   = google_compute_network.main.name
+  direction = "EGRESS"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443", "80"]
+  }
+
+  destination_ranges = ["0.0.0.0/0"]
+  target_tags        = ["egress-internet"]
+}
+```
+
+## Load Balancing
+
+### Global HTTP(S) Load Balancer
+
+```hcl
+resource "google_compute_backend_service" "web_backend" {
+  name                  = "web-backend"
+  protocol              = "HTTP"
+  port_name             = "http"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  timeout_sec           = 30
+
+  backend {
+    group = google_compute_instance_group.web_servers.id
+  }
+
+  health_checks = [google_compute_health_check.web_health.id]
+}
+
+resource "google_compute_url_map" "web_url_map" {
+  name            = "web-url-map"
+  default_service = google_compute_backend_service.web_backend.id
+}
+
+resource "google_compute_target_https_proxy" "web_https_proxy" {
+  name             = "web-https-proxy"
+  url_map          = google_compute_url_map.web_url_map.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.web_ssl.id]
+}
+
+resource "google_compute_global_forwarding_rule" "web_https" {
+  name       = "web-https-forwarding-rule"
+  target     = google_compute_target_https_proxy.web_https_proxy.id
+  port_range = "443"
+  ip_address = google_compute_global_address.web_ip.address
+}
+```
+
+### Internal Load Balancer
+
+```hcl
+resource "google_compute_region_backend_service" "internal_backend" {
+  name                  = "internal-backend"
+  protocol              = "TCP"
+  load_balancing_scheme = "INTERNAL"
+  region                = var.region
+
+  backend {
+    group = google_compute_instance_group.internal_servers.id
+  }
+
+  health_checks = [google_compute_health_check.internal_health.id]
+}
+```
+
+## Cloud NAT
+
+### Regional NAT Gateway
+
+```hcl
+resource "google_compute_router" "nat_router" {
+  name    = "nat-router"
+  region  = var.region
+  network = google_compute_network.main.id
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "nat-gateway"
+  router                             = google_compute_router.nat_router.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}
+```
+
+## Private Google Access
+
+Enable private access to Google APIs without external IPs:
+
+```hcl
+resource "google_compute_subnetwork" "compute" {
+  name          = "compute-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = var.region
+  network       = google_compute_network.main.id
+
+  private_ip_google_access = true
+}
+```
+
+## VPC Peering
+
+### Private Service Connection
+
+For accessing managed services:
+
+```hcl
+resource "google_compute_global_address" "private_ip_address" {
+  name          = "private-ip-address"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.main.id
+}
+
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = google_compute_network.main.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+}
+```
+
+## DNS Configuration
+
+### Cloud DNS
+
+```hcl
+resource "google_dns_managed_zone" "internal" {
+  name        = "internal-zone"
+  dns_name    = "internal.example.com."
+  description = "Internal DNS zone"
+
+  visibility = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.main.id
+    }
+  }
+}
+
+resource "google_dns_record_set" "internal" {
+  name         = "api.internal.example.com."
+  managed_zone = google_dns_managed_zone.internal.name
+  type         = "A"
+  ttl          = 300
+  rrdatas      = ["10.0.2.10"]
+}
+```
+
+## Network Security
+
+### VPC Service Controls
+
+```hcl
+resource "google_access_context_manager_service_perimeter" "restricted" {
+  parent = "accessPolicies/${var.access_policy_id}"
+  name   = "accessPolicies/${var.access_policy_id}/servicePerimeters/restricted"
+
+  title = "Restricted Service Perimeter"
+
+  status {
+    resources = [
+      "projects/${var.project_number}"
+    ]
+
+    restricted_services = [
+      "storage.googleapis.com",
+      "bigquery.googleapis.com"
+    ]
+
+    vpc_accessible_services {
+      enable_restriction = true
+      allowed_services   = ["storage.googleapis.com"]
+    }
+  }
+}
+```
+
+### Cloud Armor
+
+```hcl
+resource "google_compute_security_policy" "armor_policy" {
+  name = "armor-policy"
+
+  rule {
+    action   = "allow"
+    priority = "1000"
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+  }
+
+  rule {
+    action   = "deny(403)"
+    priority = "2000"
+    match {
+      expr {
+        expression = "origin.region_code == 'CN'"
+      }
+    }
+  }
+
+  rule {
+    action   = "rate_based_ban"
+    priority = "3000"
+    rate_limit_options {
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+      rate_limit_threshold {
+        count        = 100
+        interval_sec = 60
+      }
+    }
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+  }
+}
+```
+
+## Network Monitoring
+
+### VPC Flow Logs
+
+```hcl
+resource "google_compute_subnetwork" "compute" {
+  name          = "compute-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = var.region
+  network       = google_compute_network.main.id
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
+}
+```
+
+### Network Intelligence Center
+
+Enable network insights and monitoring:
+
+- **Connectivity Tests**: Verify network paths
+- **Performance Insights**: Monitor latency and throughput
+- **Topology**: Visualize network structure
+
+## High Availability
+
+### Multi-Region Design
+
+- **Primary Region**: Active production traffic
+- **Secondary Region**: Failover and read replicas
+- **Tertiary Region**: Disaster recovery
+
+### Failover Strategy
+
+- **Health Checks**: Automatic failover on failure
+- **DNS Failover**: Route53 or Cloud DNS failover
+- **Load Balancer**: Regional failover configuration
+
+## Best Practices
+
+1. **Subnet Design**: Organize by function, not by environment
+2. **CIDR Planning**: Reserve IP space for growth
+3. **Firewall Rules**: Use tags and service accounts
+4. **Private Access**: Enable Private Google Access
+5. **Flow Logs**: Enable for security monitoring
+6. **NAT**: Use Cloud NAT for outbound access
+7. **Load Balancing**: Use appropriate load balancer type
+8. **DNS**: Use Cloud DNS for internal resolution
+
+## Troubleshooting
+
+### Common Issues
+
+**Connectivity Problems**
+- Check firewall rules
+- Verify subnet configuration
+- Check route tables
+- Verify Private Google Access
+
+**Performance Issues**
+- Review flow logs
+- Check load balancer configuration
+- Verify network paths
+- Monitor bandwidth usage
+
+**Security Issues**
+- Review firewall rules
+- Check VPC Service Controls
+- Verify IAM permissions
+- Review Cloud Armor rules
+
+## Next Steps
+
+- [Architecture Overview](/architecture/overview) - Overall architecture
+- [Component Diagram](/architecture/component-diagram) - Component details
+- [Security Architecture](/architecture/security-architecture) - Security design
+
+---
+
+**Related Documentation**:
+- [Services Networking](/services/networking)
+- [Security IAM](/security/iam)
+

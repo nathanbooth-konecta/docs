@@ -1,0 +1,437 @@
+---
+title: Terraform Outputs
+description: Output reference and usage guide
+---
+
+# Terraform Outputs
+
+This document describes the outputs from the Terraform configuration for Google Cloud infrastructure.
+
+## Output Basics
+
+### Simple Output
+
+```hcl
+output "vpc_network_id" {
+  description = "The ID of the VPC network"
+  value       = google_compute_network.main.id
+}
+```
+
+### Output with Condition
+
+```hcl
+output "instance_ip" {
+  description = "Instance IP address"
+  value       = var.enable_public_ip ? google_compute_instance.main.network_interface[0].access_config[0].nat_ip : null
+}
+```
+
+## Common Outputs
+
+### Network Outputs
+
+```hcl
+output "vpc_network_id" {
+  description = "The ID of the VPC network"
+  value       = google_compute_network.main.id
+}
+
+output "vpc_network_name" {
+  description = "The name of the VPC network"
+  value       = google_compute_network.main.name
+}
+
+output "subnet_ids" {
+  description = "List of subnet IDs"
+  value       = [for s in google_compute_subnetwork.subnets : s.id]
+}
+
+output "subnet_names" {
+  description = "List of subnet names"
+  value       = [for s in google_compute_subnetwork.subnets : s.name]
+}
+
+output "nat_gateway_ip" {
+  description = "NAT gateway IP address"
+  value       = google_compute_address.nat.address
+}
+```
+
+### Compute Outputs
+
+```hcl
+output "instance_ids" {
+  description = "List of instance IDs"
+  value       = [for i in google_compute_instance.instances : i.id]
+}
+
+output "instance_names" {
+  description = "List of instance names"
+  value       = [for i in google_compute_instance.instances : i.name]
+}
+
+output "instance_ips" {
+  description = "List of instance internal IP addresses"
+  value       = [for i in google_compute_instance.instances : i.network_interface[0].network_ip]
+}
+
+output "instance_public_ips" {
+  description = "List of instance public IP addresses"
+  value       = [for i in google_compute_instance.instances : i.network_interface[0].access_config[0].nat_ip]
+}
+
+output "instance_group_id" {
+  description = "Instance group ID"
+  value       = google_compute_instance_group.main.id
+}
+```
+
+### Storage Outputs
+
+```hcl
+output "bucket_names" {
+  description = "List of bucket names"
+  value       = [for b in google_storage_bucket.buckets : b.name]
+}
+
+output "bucket_urls" {
+  description = "List of bucket URLs"
+  value       = [for b in google_storage_bucket.buckets : b.url]
+}
+
+output "sql_instance_ids" {
+  description = "List of SQL instance IDs"
+  value       = [for s in google_sql_database_instance.instances : s.id]
+}
+
+output "sql_connection_names" {
+  description = "List of SQL connection names"
+  value       = [for s in google_sql_database_instance.instances : s.connection_name]
+}
+
+output "sql_public_ips" {
+  description = "List of SQL public IP addresses"
+  value       = [for s in google_sql_database_instance.instances : s.public_ip_address]
+}
+```
+
+### Security Outputs
+
+```hcl
+output "service_account_emails" {
+  description = "Map of service account emails"
+  value = {
+    for k, v in google_service_account.accounts : k => v.email
+  }
+}
+
+output "service_account_keys" {
+  description = "Map of service account keys (if created)"
+  value = {
+    for k, v in google_service_account_key.keys : k => v.private_key
+  }
+  sensitive = true
+}
+
+output "custom_role_ids" {
+  description = "List of custom role IDs"
+  value       = [for r in google_project_iam_custom_role.roles : r.role_id]
+}
+```
+
+### Monitoring Outputs
+
+```hcl
+output "alert_policy_ids" {
+  description = "List of alert policy IDs"
+  value       = [for a in google_monitoring_alert_policy.policies : a.id]
+}
+
+output "dashboard_ids" {
+  description = "List of dashboard IDs"
+  value       = [for d in google_monitoring_dashboard.dashboards : d.id]
+}
+
+output "notification_channel_ids" {
+  description = "List of notification channel IDs"
+  value       = [for n in google_monitoring_notification_channel.channels : n.id]
+}
+```
+
+### AI Services Outputs
+
+```hcl
+output "elevenlabs_secret_id" {
+  description = "Secret Manager secret ID for 11Labs API key"
+  value       = google_secret_manager_secret.elevenlabs_api_key.secret_id
+}
+
+output "crewai_cluster_id" {
+  description = "GKE cluster ID for CrewAI"
+  value       = google_container_cluster.crewai.id
+}
+
+output "crewai_cluster_endpoint" {
+  description = "GKE cluster endpoint"
+  value       = google_container_cluster.crewai.endpoint
+}
+
+output "vertex_ai_endpoint_id" {
+  description = "Vertex AI endpoint ID"
+  value       = google_vertex_ai_endpoint.ml_endpoint.id
+}
+```
+
+## Output Types
+
+### String Outputs
+
+```hcl
+output "project_id" {
+  description = "GCP project ID"
+  value       = var.project_id
+}
+```
+
+### Number Outputs
+
+```hcl
+output "instance_count" {
+  description = "Number of instances created"
+  value       = length(google_compute_instance.instances)
+}
+```
+
+### List Outputs
+
+```hcl
+output "subnet_cidrs" {
+  description = "List of subnet CIDR blocks"
+  value       = [for s in google_compute_subnetwork.subnets : s.ip_cidr_range]
+}
+```
+
+### Map Outputs
+
+```hcl
+output "instance_details" {
+  description = "Map of instance details"
+  value = {
+    for i in google_compute_instance.instances : i.name => {
+      id        = i.id
+      ip        = i.network_interface[0].network_ip
+      zone      = i.zone
+      machine_type = i.machine_type
+    }
+  }
+}
+```
+
+### Object Outputs
+
+```hcl
+output "network_config" {
+  description = "Network configuration"
+  value = {
+    vpc_id     = google_compute_network.main.id
+    vpc_name   = google_compute_network.main.name
+    subnets    = [for s in google_compute_subnetwork.subnets : {
+      id   = s.id
+      name = s.name
+      cidr = s.ip_cidr_range
+    }]
+  }
+}
+```
+
+## Sensitive Outputs
+
+### Marking Outputs as Sensitive
+
+```hcl
+output "api_key" {
+  description = "API key (sensitive)"
+  value       = google_secret_manager_secret_version.api_key.secret_data
+  sensitive   = true
+}
+```
+
+### Using Sensitive Outputs
+
+When an output is marked as sensitive:
+- It won't be displayed in `terraform plan` or `terraform apply`
+- It will be shown as `<sensitive>` in the output
+- It can still be accessed via `terraform output -json`
+
+## Output Dependencies
+
+### Implicit Dependencies
+
+```hcl
+output "instance_network" {
+  description = "Instance network information"
+  value = {
+    network    = google_compute_instance.main.network
+    subnetwork = google_compute_instance.main.subnetwork
+  }
+}
+```
+
+### Explicit Dependencies
+
+```hcl
+output "instance_with_dependency" {
+  description = "Instance with explicit dependency"
+  value       = google_compute_instance.main.id
+  depends_on  = [google_compute_firewall.allow_http]
+}
+```
+
+## Using Outputs
+
+### In Same Configuration
+
+```hcl
+resource "google_compute_instance" "app" {
+  name         = "app-server"
+  network      = google_compute_network.main.self_link
+  # ...
+}
+
+output "app_instance_id" {
+  value = google_compute_instance.app.id
+}
+```
+
+### From Modules
+
+```hcl
+module "network" {
+  source = "./modules/network"
+  # ...
+}
+
+module "compute" {
+  source = "./modules/compute"
+  network_id = module.network.vpc_network_id
+  # ...
+}
+
+output "complete_infrastructure" {
+  value = {
+    network_id = module.network.vpc_network_id
+    instance_ids = module.compute.instance_ids
+  }
+}
+```
+
+### In Other Configurations
+
+```hcl
+data "terraform_remote_state" "network" {
+  backend = "gcs"
+  config = {
+    bucket = "terraform-state"
+    prefix = "network"
+  }
+}
+
+resource "google_compute_instance" "app" {
+  network = data.terraform_remote_state.network.outputs.vpc_network_id
+  # ...
+}
+```
+
+## Querying Outputs
+
+### Command Line
+
+```bash
+# Get all outputs
+terraform output
+
+# Get specific output
+terraform output vpc_network_id
+
+# Get output as JSON
+terraform output -json
+
+# Get specific output as JSON
+terraform output -json vpc_network_id
+```
+
+### In Scripts
+
+```bash
+#!/bin/bash
+VPC_ID=$(terraform output -raw vpc_network_id)
+echo "VPC ID: $VPC_ID"
+```
+
+## Output Best Practices
+
+1. **Document all outputs**: Provide clear descriptions
+2. **Use appropriate types**: Choose the right output type
+3. **Mark sensitive data**: Use `sensitive = true` for secrets
+4. **Organize outputs**: Group related outputs together
+5. **Use meaningful names**: Choose descriptive output names
+6. **Avoid unnecessary outputs**: Only output what's needed
+7. **Consider dependencies**: Use `depends_on` when needed
+
+## Output Examples
+
+### Complete Example
+
+```hcl
+# Network outputs
+output "vpc_network_id" {
+  description = "The ID of the VPC network"
+  value       = google_compute_network.main.id
+}
+
+output "subnet_info" {
+  description = "Subnet information"
+  value = {
+    for subnet in google_compute_subnetwork.subnets : subnet.name => {
+      id   = subnet.id
+      cidr = subnet.ip_cidr_range
+      region = subnet.region
+    }
+  }
+}
+
+# Compute outputs
+output "instances" {
+  description = "Instance information"
+  value = {
+    for instance in google_compute_instance.instances : instance.name => {
+      id        = instance.id
+      ip        = instance.network_interface[0].network_ip
+      zone      = instance.zone
+      public_ip = try(instance.network_interface[0].access_config[0].nat_ip, null)
+    }
+  }
+}
+
+# Sensitive outputs
+output "database_password" {
+  description = "Database password"
+  value       = random_password.db_password.result
+  sensitive   = true
+}
+```
+
+## Next Steps
+
+- [Terraform Overview](/terraform/overview) - Terraform introduction
+- [Variables](/terraform/variables) - Variable reference
+- [Modules](/terraform/modules) - Module usage
+- [Best Practices](/terraform/best-practices) - Best practices
+
+---
+
+**Related Documentation**:
+- [Directory Structure](/terraform/directory-structure)
+- [State Management](/terraform/state-management)
+

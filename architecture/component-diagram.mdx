@@ -1,0 +1,384 @@
+---
+title: Component Diagram
+description: Detailed component architecture diagram and documentation
+---
+
+# Component Diagram
+
+This document provides a detailed breakdown of all components in the Google Cloud infrastructure for Agentic AI solutions.
+
+## High-Level Component Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         External Layer                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │   Internet   │  │  API Clients │  │  AI Services │             │
+│  │   (Users)    │  │  (11Labs)    │  │  (CrewAI)    │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Edge & Load Balancing Layer                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │ Global Load  │  │  Cloud CDN   │  │  Cloud Armor │             │
+│  │  Balancer    │  │  (Caching)   │  │  (Security)  │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Networking Layer                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │   VPC        │  │  Subnets     │  │  Firewall    │             │
+│  │  Network     │  │  (Regional)  │  │  Rules       │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Cloud NAT   │  │  VPN/Peering │  │  Private     │             │
+│  │  (Egress)    │  │  (Connect)   │  │  Access      │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Compute Layer                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Compute     │  │  Cloud Run   │  │  GKE Cluster │             │
+│  │  Engine      │  │  (Serverless)│  │  (K8s)       │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  App Engine  │  │  Cloud       │  │  Cloud       │             │
+│  │  (Optional)  │  │  Functions   │  │  Batch       │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Storage Layer                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Cloud       │  │  Cloud SQL   │  │  Firestore   │             │
+│  │  Storage     │  │  (RDBMS)     │  │  (NoSQL)     │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Filestore   │  │  BigQuery    │  │  Spanner     │             │
+│  │  (NFS)       │  │  (Data Ware) │  │  (Global DB) │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Messaging & Integration Layer                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Pub/Sub     │  │  Cloud Tasks │  │  Eventarc    │             │
+│  │  (Messaging) │  │  (Async)     │  │  (Events)    │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  API Gateway │  │  Cloud       │  │  Cloud       │             │
+│  │  (Endpoints) │  │  Scheduler   │  │  Workflows   │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AI Services Layer                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  11Labs      │  │  CrewAI      │  │  Vertex AI   │             │
+│  │  (Voice)     │  │  (Agents)    │  │  (ML)        │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Cloud       │  │  Document AI │  │  Translation │             │
+│  │  Vision API  │  │  (Processing)│  │  API         │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Security & Identity Layer                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Cloud IAM   │  │  Cloud KMS   │  │  Secret      │             │
+│  │  (Access)    │  │  (Keys)      │  │  Manager     │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  VPC Service │  │  Binary      │  │  Certificate │             │
+│  │  Controls    │  │  Auth        │  │  Manager     │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────┼──────────────────┼──────────────────┼─────────────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Observability Layer                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Cloud       │  │  Cloud       │  │  Cloud       │             │
+│  │  Monitoring  │  │  Logging     │  │  Trace       │             │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │  Error       │  │  Profiler    │  │  Debugger    │             │
+│  │  Reporting   │  │  (APM)       │  │  (Debug)     │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Component Details
+
+### Edge & Load Balancing Layer
+
+#### Global Load Balancer
+- **Purpose**: Distribute traffic across multiple regions
+- **Type**: HTTP(S) Load Balancer
+- **Features**: 
+  - SSL/TLS termination
+  - Health checks
+  - Content-based routing
+  - Session affinity
+
+#### Cloud CDN
+- **Purpose**: Cache static and dynamic content
+- **Benefits**: Reduced latency, lower bandwidth costs
+- **Configuration**: Cache policies, TTL settings
+
+#### Cloud Armor
+- **Purpose**: DDoS protection and WAF
+- **Features**: 
+  - Rate limiting
+  - IP filtering
+  - Custom security rules
+
+### Networking Layer
+
+#### VPC Network
+- **Type**: Custom mode VPC
+- **Regions**: Multi-region deployment
+- **Subnets**: Organized by function (compute, services, database)
+
+#### Firewall Rules
+- **Ingress**: Allow specific traffic patterns
+- **Egress**: Control outbound connections
+- **Tags**: Resource-based rules
+
+#### Cloud NAT
+- **Purpose**: Outbound internet access for private instances
+- **Configuration**: Regional NAT gateways
+
+### Compute Layer
+
+#### Compute Engine
+- **Instance Types**: 
+  - General purpose (e2, n2)
+  - Memory optimized (n2-highmem)
+  - Compute optimized (c2)
+- **Features**: 
+  - Managed instance groups
+  - Auto-scaling
+  - Preemptible instances
+
+#### Cloud Run
+- **Purpose**: Serverless container platform
+- **Scaling**: Automatic from 0 to N
+- **Use Cases**: 
+  - API endpoints
+  - Microservices
+  - Event-driven functions
+
+#### GKE (Google Kubernetes Engine)
+- **Purpose**: Container orchestration
+- **Features**: 
+  - Auto-scaling (HPA, VPA)
+  - Workload Identity
+  - Node auto-provisioning
+
+### Storage Layer
+
+#### Cloud Storage
+- **Buckets**: Multi-regional for HA
+- **Use Cases**: 
+  - Static assets
+  - Artifacts
+  - Backups
+- **Features**: 
+  - Versioning
+  - Lifecycle policies
+  - Object retention
+
+#### Cloud SQL
+- **Engines**: PostgreSQL, MySQL
+- **Features**: 
+  - Automated backups
+  - Read replicas
+  - High availability
+  - Point-in-time recovery
+
+#### Firestore
+- **Type**: NoSQL document database
+- **Features**: 
+  - Real-time sync
+  - Automatic scaling
+  - Strong consistency
+
+### Messaging & Integration Layer
+
+#### Pub/Sub
+- **Purpose**: Asynchronous messaging
+- **Use Cases**: 
+  - Event-driven architecture
+  - Agent communication
+  - Decoupled services
+- **Features**: 
+  - At-least-once delivery
+  - Ordering keys
+  - Dead letter topics
+
+#### Cloud Tasks
+- **Purpose**: Asynchronous task execution
+- **Features**: 
+  - Task queues
+  - Retry logic
+  - Rate limiting
+
+#### API Gateway
+- **Purpose**: API management
+- **Features**: 
+  - Authentication
+  - Rate limiting
+  - Request/response transformation
+
+### AI Services Layer
+
+#### 11Labs Integration
+- **Service**: Voice synthesis API
+- **Integration**: 
+  - Secret Manager for API keys
+  - Rate limiting
+  - Monitoring
+
+#### CrewAI Integration
+- **Service**: Multi-agent orchestration
+- **Infrastructure**: 
+  - Container hosting (Cloud Run/GKE)
+  - Pub/Sub for messaging
+  - Firestore for state
+
+#### Vertex AI
+- **Services**: 
+  - Model training
+  - Model serving
+  - AutoML
+  - Model monitoring
+
+### Security & Identity Layer
+
+#### Cloud IAM
+- **Purpose**: Access control
+- **Components**: 
+  - Service accounts
+  - Custom roles
+  - Organization policies
+
+#### Cloud KMS
+- **Purpose**: Key management
+- **Features**: 
+  - Encryption keys
+  - Key rotation
+  - Audit logging
+
+#### Secret Manager
+- **Purpose**: Secret storage
+- **Features**: 
+  - Versioning
+  - Access control
+  - Audit logging
+
+### Observability Layer
+
+#### Cloud Monitoring
+- **Metrics**: Custom and built-in
+- **Dashboards**: Visualizations
+- **Alerts**: Notification policies
+
+#### Cloud Logging
+- **Purpose**: Centralized logging
+- **Features**: 
+  - Log aggregation
+  - Log-based metrics
+  - Export to BigQuery
+
+#### Cloud Trace
+- **Purpose**: Distributed tracing
+- **Features**: 
+  - Request tracing
+  - Performance analysis
+  - Service dependency mapping
+
+## Component Interactions
+
+### Request Flow
+
+1. **User Request** → Global Load Balancer
+2. **Load Balancer** → Routes to Cloud Run or Compute Engine
+3. **Application** → Accesses:
+   - Cloud SQL for data
+   - Cloud Storage for assets
+   - Pub/Sub for events
+4. **AI Processing** → Calls:
+   - 11Labs for voice
+   - CrewAI for agents
+   - Vertex AI for ML
+5. **Response** → Returns to user
+
+### Agent Workflow
+
+1. **Trigger** → Event or API call
+2. **Orchestration** → CrewAI coordinates agents
+3. **Communication** → Pub/Sub for agent messaging
+4. **State** → Firestore for agent state
+5. **Processing** → Agents perform tasks
+6. **Response** → Results returned
+
+## Component Dependencies
+
+### Critical Dependencies
+
+- **Compute** depends on **Networking** (VPC, subnets)
+- **Storage** depends on **Networking** (private access)
+- **AI Services** depend on **Security** (IAM, Secret Manager)
+- **All Services** depend on **Observability** (monitoring, logging)
+
+### High Availability
+
+- **Multi-region** deployment for critical components
+- **Load balancing** for traffic distribution
+- **Replication** for databases
+- **Backup** strategies for data
+
+## Scaling Considerations
+
+### Horizontal Scaling
+
+- **Compute Engine**: Managed instance groups
+- **Cloud Run**: Automatic scaling
+- **GKE**: Pod and node autoscaling
+
+### Vertical Scaling
+
+- **Database**: Instance size increases
+- **Compute**: Machine type upgrades
+
+### Cost Optimization
+
+- **Preemptible instances** for non-critical workloads
+- **Committed use discounts** for predictable workloads
+- **Right-sizing** based on usage
+
+## Next Steps
+
+- [Architecture Overview](/architecture/overview) - High-level architecture
+- [Design Principles](/architecture/design-principles) - Design guidelines
+- [Networking](/architecture/networking) - Network architecture
+- [Security Architecture](/architecture/security-architecture) - Security design
+
+---
+
+**Related Documentation**:
+- [Terraform Modules](/terraform/modules)
+- [Services Overview](/services/compute)
+

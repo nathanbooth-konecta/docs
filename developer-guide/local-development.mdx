@@ -1,0 +1,404 @@
+---
+title: Local Development
+description: Local development environment setup and workflows
+---
+
+# Local Development
+
+This document describes how to set up and work with a local development environment for the Google Cloud infrastructure.
+
+## Local Development Setup
+
+### Prerequisites
+
+```bash
+# Install required tools
+# - Terraform >= 1.5.0
+# - gcloud CLI
+# - Docker (optional)
+# - Git
+```
+
+### Environment Configuration
+
+```bash
+# Set project
+export GOOGLE_CLOUD_PROJECT="your-dev-project"
+gcloud config set project $GOOGLE_CLOUD_PROJECT
+
+# Set region
+export GOOGLE_CLOUD_REGION="us-central1"
+
+# Enable APIs
+gcloud services enable \
+  compute.googleapis.com \
+  storage.googleapis.com \
+  iam.googleapis.com
+```
+
+## Development Workflow
+
+### 1. Clone and Setup
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/gcp-iac-repo.git
+cd gcp-iac-repo
+
+# Create development branch
+git checkout -b feature/my-feature
+
+# Initialize Terraform
+terraform init
+```
+
+### 2. Local Testing
+
+```bash
+# Validate configuration
+terraform validate
+
+# Format code
+terraform fmt -recursive
+
+# Plan changes
+terraform plan -var-file=dev.tfvars
+```
+
+### 3. Iterative Development
+
+```bash
+# Make changes to Terraform files
+# ...
+
+# Validate
+terraform validate
+
+# Plan
+terraform plan
+
+# Apply (if safe)
+terraform apply
+```
+
+### 4. Testing Changes
+
+```bash
+# Test specific module
+cd modules/network
+terraform init
+terraform plan
+
+# Test with different variables
+terraform plan -var="instance_count=2"
+```
+
+## Local Development Tools
+
+### Terraform Linting
+
+```bash
+# Install tflint
+brew install tflint  # macOS
+# or
+wget https://github.com/terraform-linters/tflint/releases/download/v0.47.0/tflint_linux_amd64.zip
+unzip tflint_linux_amd64.zip
+sudo mv tflint /usr/local/bin/
+
+# Run linter
+tflint terraform/
+```
+
+### Pre-commit Hooks
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+### VS Code Setup
+
+Install extensions:
+- HashiCorp Terraform
+- Google Cloud Code
+- YAML
+
+Configure `.vscode/settings.json`:
+```json
+{
+  "terraform.format.enable": true,
+  "terraform.languageServer.enable": true,
+  "editor.formatOnSave": true,
+  "[terraform]": {
+    "editor.defaultFormatter": "hashicorp.terraform"
+  }
+}
+```
+
+## Local Testing Strategies
+
+### Module Testing
+
+Test modules in isolation:
+
+```bash
+# Create test directory
+mkdir -p test/modules/network
+cd test/modules/network
+
+# Copy module
+cp -r ../../../modules/network/* .
+
+# Create test variables
+cat > test.tfvars <<EOF
+project_id = "test-project"
+region     = "us-central1"
+EOF
+
+# Test
+terraform init
+terraform plan -var-file=test.tfvars
+```
+
+### Unit Testing with Terratest
+
+```go
+package test
+
+import (
+    "testing"
+    "github.com/gruntwork-io/terratest/modules/terraform"
+)
+
+func TestNetworkModule(t *testing.T) {
+    terraformOptions := &terraform.Options{
+        TerraformDir: "../modules/network",
+    }
+    
+    defer terraform.Destroy(t, terraformOptions)
+    terraform.InitAndApply(t, terraformOptions)
+}
+```
+
+## Mocking and Stubs
+
+### Local Mock Services
+
+For testing without GCP:
+
+```bash
+# Use localstack for AWS-like services
+docker run -d -p 4566:4566 localstack/localstack
+
+# Use fake-gcs-server for GCS
+docker run -d -p 4443:4443 fsouza/fake-gcs-server
+```
+
+### Terraform Mocks
+
+Use data sources to mock resources:
+
+```hcl
+# mock.tf
+data "google_compute_network" "mock" {
+  name = "default"
+}
+
+# Use in development
+variable "use_mock" {
+  default = false
+}
+
+locals {
+  network_id = var.use_mock ? data.google_compute_network.mock.id : google_compute_network.main.id
+}
+```
+
+## Development Best Practices
+
+### Code Organization
+
+```
+terraform/
+├── main.tf
+├── variables.tf
+├── outputs.tf
+├── dev.tfvars          # Development variables
+├── modules/
+│   └── network/
+└── test/               # Test configurations
+    └── modules/
+```
+
+### Git Workflow
+
+```bash
+# Create feature branch
+git checkout -b feature/add-network-module
+
+# Make changes
+# ...
+
+# Commit
+git add .
+git commit -m "Add network module"
+
+# Push
+git push origin feature/add-network-module
+
+# Create pull request
+```
+
+### Code Review Checklist
+
+- [ ] Terraform validates
+- [ ] Code is formatted
+- [ ] Variables are documented
+- [ ] Outputs are documented
+- [ ] Tests pass
+- [ ] No hardcoded values
+- [ ] Security best practices followed
+
+## Local Development Tips
+
+### Fast Iteration
+
+```bash
+# Use targeted applies
+terraform apply -target=module.network
+
+# Skip refresh for speed
+terraform apply -refresh=false
+
+# Use parallelism
+terraform apply -parallelism=10
+```
+
+### Debugging
+
+```bash
+# Enable debug logging
+export TF_LOG=DEBUG
+terraform plan
+
+# Check state
+terraform state list
+terraform state show RESOURCE_ADDRESS
+
+# Validate specific resource
+terraform validate -check-variables=false
+```
+
+### Resource Management
+
+```bash
+# List resources
+terraform state list
+
+# Remove from state (without destroying)
+terraform state rm RESOURCE_ADDRESS
+
+# Import existing resource
+terraform import RESOURCE_ADDRESS RESOURCE_ID
+```
+
+## Environment Isolation
+
+### Workspaces
+
+```bash
+# Create development workspace
+terraform workspace new dev
+
+# Switch workspaces
+terraform workspace select dev
+terraform workspace select staging
+terraform workspace select production
+
+# List workspaces
+terraform workspace list
+```
+
+### Separate Projects
+
+Use different GCP projects for environments:
+
+```hcl
+# dev.tfvars
+project_id = "my-project-dev"
+
+# staging.tfvars
+project_id = "my-project-staging"
+
+# production.tfvars
+project_id = "my-project-prod"
+```
+
+## Local Development Tools
+
+### Terraform Cloud (Optional)
+
+For team collaboration:
+
+```hcl
+terraform {
+  cloud {
+    organization = "your-org"
+    workspaces {
+      name = "dev"
+    }
+  }
+}
+```
+
+### Docker for Testing
+
+```dockerfile
+FROM hashicorp/terraform:1.5.0
+
+WORKDIR /workspace
+COPY . .
+
+CMD ["terraform", "validate"]
+```
+
+## Troubleshooting Local Issues
+
+### Common Issues
+
+**Terraform not found**
+```bash
+# Install Terraform
+brew install terraform  # macOS
+# or download from https://www.terraform.io/downloads
+```
+
+**gcloud not authenticated**
+```bash
+gcloud auth application-default login
+```
+
+**State lock issues**
+```bash
+# Check for locks
+terraform force-unlock LOCK_ID
+```
+
+## Next Steps
+
+- [Setup Guide](/developer-guide/setup) - Initial setup
+- [Testing](/developer-guide/testing) - Testing strategies
+- [Deployment](/developer-guide/deployment) - Deployment guide
+
+---
+
+**Related Documentation**:
+- [Prerequisites](/developer-guide/prerequisites)
+- [Authentication](/developer-guide/authentication)
+

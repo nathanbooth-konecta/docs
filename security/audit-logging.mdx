@@ -1,0 +1,53 @@
+---
+title: Audit Logging
+description: Audit logging configuration and monitoring
+---
+
+# Audit Logging
+
+This document describes audit logging configuration for security and compliance.
+
+## Configuration
+
+```hcl
+resource "google_project_iam_audit_config" "audit_config" {
+  project = var.project_id
+
+  service = "allServices"
+
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
+}
+```
+
+## Monitoring
+
+- Review audit logs regularly
+- Set up alerts for suspicious activity
+- Export logs to BigQuery for analysis
+
+## Best Practices
+
+- Enable audit logging for all services
+- Retain logs according to compliance requirements
+- Monitor and alert on security events
+
+## Next Steps
+
+- [Security Overview](/security/overview) - Security overview
+- [Operations Logging](/operations/logging) - Logging setup
+
+---
+
+**Related Documentation**:
+- [Security Architecture](/architecture/security-architecture)
+

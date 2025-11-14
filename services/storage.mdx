@@ -1,0 +1,273 @@
+---
+title: Storage Services
+description: Cloud Storage, Cloud SQL, and Firestore configuration
+---
+
+# Storage Services
+
+This document describes the storage services used in the infrastructure: Cloud Storage, Cloud SQL, and Firestore.
+
+## Cloud Storage
+
+### Overview
+
+Cloud Storage provides object storage with global edge-caching.
+
+### Configuration
+
+```hcl
+resource "google_storage_bucket" "main" {
+  name          = "${var.project_id}-storage"
+  location      = var.region
+  force_destroy = false
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 30
+    }
+    action {
+      type = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
+  }
+
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
+  uniform_bucket_level_access = true
+}
+
+resource "google_storage_bucket_iam_member" "public" {
+  bucket = google_storage_bucket.main.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+```
+
+### CORS Configuration
+
+```hcl
+resource "google_storage_bucket" "web" {
+  name = "${var.project_id}-web"
+
+  cors {
+    origin          = ["https://example.com"]
+    method          = ["GET", "HEAD", "PUT", "POST", "DELETE"]
+    response_header = ["*"]
+    max_age_seconds = 3600
+  }
+}
+```
+
+## Cloud SQL
+
+### Overview
+
+Cloud SQL provides managed relational databases (PostgreSQL, MySQL, SQL Server).
+
+### PostgreSQL Configuration
+
+```hcl
+resource "google_sql_database_instance" "main" {
+  name             = "main-db"
+  database_version = "POSTGRES_14"
+  region           = var.region
+
+  settings {
+    tier = "db-f1-micro"
+
+    backup_configuration {
+      enabled                        = true
+      start_time                     = "03:00"
+      point_in_time_recovery_enabled = true
+    }
+
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.main.id
+    }
+
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+
+    insights_config {
+      query_insights_enabled  = true
+      query_string_length     = 1024
+      record_application_tags = true
+    }
+  }
+
+  deletion_protection = true
+}
+
+resource "google_sql_database" "app_db" {
+  name     = "appdb"
+  instance = google_sql_database_instance.main.name
+}
+
+resource "google_sql_user" "app_user" {
+  name     = "appuser"
+  instance = google_sql_database_instance.main.name
+  password = random_password.db_password.result
+}
+```
+
+### Read Replicas
+
+```hcl
+resource "google_sql_database_instance" "replica" {
+  name                 = "main-db-replica"
+  master_instance_name = google_sql_database_instance.main.name
+  region               = var.region
+  database_version     = "POSTGRES_14"
+
+  replica_configuration {
+    failover_target = false
+  }
+
+  settings {
+    tier = "db-f1-micro"
+  }
+}
+```
+
+## Firestore
+
+### Overview
+
+Firestore is a NoSQL document database with real-time synchronization.
+
+### Configuration
+
+```hcl
+resource "google_firestore_database" "main" {
+  project     = var.project_id
+  name        = "(default)"
+  location_id = var.region
+  type        = "FIRESTORE_NATIVE"
+
+  concurrency_mode = "OPTIMISTIC"
+  app_engine_integration_mode = "DISABLED"
+}
+```
+
+### Security Rules
+
+```javascript
+// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /posts/{postId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                     request.resource.data.authorId == request.auth.uid;
+    }
+  }
+}
+```
+
+## BigQuery
+
+### Overview
+
+BigQuery is a serverless data warehouse for analytics.
+
+### Configuration
+
+```hcl
+resource "google_bigquery_dataset" "main" {
+  dataset_id  = "analytics"
+  location    = var.region
+  description = "Analytics dataset"
+
+  access {
+    role          = "OWNER"
+    user_by_email = google_service_account.bigquery.email
+  }
+
+  access {
+    role   = "READER"
+    domain = "example.com"
+  }
+}
+
+resource "google_bigquery_table" "events" {
+  dataset_id = google_bigquery_dataset.main.dataset_id
+  table_id   = "events"
+
+  schema = jsonencode([
+    {
+      name = "event_id"
+      type = "STRING"
+      mode = "REQUIRED"
+    },
+    {
+      name = "timestamp"
+      type = "TIMESTAMP"
+      mode = "REQUIRED"
+    },
+    {
+      name = "user_id"
+      type = "STRING"
+      mode = "NULLABLE"
+    }
+  ])
+}
+```
+
+## Best Practices
+
+### Security
+
+- Enable encryption at rest
+- Use IAM for access control
+- Enable audit logging
+- Use private IPs for databases
+
+### Performance
+
+- Use appropriate storage classes
+- Implement lifecycle policies
+- Use read replicas for databases
+- Optimize queries
+
+### Cost Optimization
+
+- Use lifecycle policies
+- Choose appropriate storage classes
+- Right-size database instances
+- Archive old data
+
+## Next Steps
+
+- [Compute Services](/services/compute) - Compute configuration
+- [Networking Services](/services/networking) - Network configuration
+- [Security Services](/services/security) - Security setup
+
+---
+
+**Related Documentation**:
+- [Architecture Overview](/architecture/overview)
+- [Data Protection](/security/data-protection)
+

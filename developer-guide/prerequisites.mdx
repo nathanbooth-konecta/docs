@@ -1,0 +1,345 @@
+---
+title: Prerequisites
+description: Required tools, accounts, and permissions for working with the infrastructure
+---
+
+# Prerequisites
+
+Before you begin working with the Google Cloud infrastructure for Agentic AI solutions, ensure you have the following prerequisites in place.
+
+## Required Accounts
+
+### Google Cloud Platform Account
+
+- **GCP Account**: Active Google Cloud Platform account
+- **Billing**: Billing account enabled and linked to your project
+- **Project Access**: Access to the appropriate GCP project(s)
+
+### Required IAM Roles
+
+Your Google Cloud account needs the following IAM roles (or equivalent permissions):
+
+#### Minimum Required Roles
+
+- **Project Editor** (`roles/editor`) - For development environments
+- **Service Account User** (`roles/iam.serviceAccountUser`) - To use service accounts
+- **Storage Admin** (`roles/storage.admin`) - For Terraform state management
+
+#### Production Roles (More Restrictive)
+
+For production environments, use more granular roles:
+
+- **Compute Admin** (`roles/compute.admin`) - For compute resources
+- **Network Admin** (`roles/compute.networkAdmin`) - For networking
+- **Storage Admin** (`roles/storage.admin`) - For storage resources
+- **IAM Admin** (`roles/iam.admin`) - For IAM resources (limited scope)
+- **Service Account Admin** (`roles/iam.serviceAccountAdmin`) - For service accounts
+
+#### Organization-Level Roles (If Applicable)
+
+- **Organization Viewer** (`roles/resourcemanager.organizationViewer`)
+- **Folder Viewer** (`roles/resourcemanager.folderViewer`)
+
+## Required Software
+
+### Terraform
+
+**Version**: >= 1.5.0
+
+**Installation**:
+
+```bash
+# Windows (using Chocolatey)
+choco install terraform
+
+# macOS (using Homebrew)
+brew install terraform
+
+# Linux
+wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
+unzip terraform_1.6.0_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+```
+
+**Verify Installation**:
+
+```bash
+terraform version
+```
+
+### Google Cloud SDK (gcloud)
+
+**Version**: Latest stable version
+
+**Installation**:
+
+```bash
+# Windows
+# Download and run the installer from:
+# https://cloud.google.com/sdk/docs/install
+
+# macOS
+brew install google-cloud-sdk
+
+# Linux
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL
+```
+
+**Verify Installation**:
+
+```bash
+gcloud version
+```
+
+**Initial Setup**:
+
+```bash
+gcloud init
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+```
+
+### Git
+
+**Version**: >= 2.30.0
+
+**Installation**:
+
+```bash
+# Windows
+# Download from https://git-scm.com/download/win
+
+# macOS
+brew install git
+
+# Linux
+sudo apt-get install git  # Debian/Ubuntu
+sudo yum install git      # RHEL/CentOS
+```
+
+**Verify Installation**:
+
+```bash
+git --version
+```
+
+**Configuration**:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+### Text Editor or IDE
+
+Choose one of the following:
+
+- **VS Code** (Recommended)
+  - Install the HashiCorp Terraform extension
+  - Install the Google Cloud Code extension
+- **IntelliJ IDEA** with Terraform plugin
+- **Vim/Neovim** with terraform-ls
+- Any text editor with Terraform syntax support
+
+## Required APIs
+
+Enable the following Google Cloud APIs in your project:
+
+```bash
+# Core APIs
+gcloud services enable compute.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable iam.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
+
+# Networking
+gcloud services enable servicenetworking.googleapis.com
+gcloud services enable dns.googleapis.com
+
+# Security
+gcloud services enable secretmanager.googleapis.com
+gcloud services enable cloudkms.googleapis.com
+
+# Monitoring & Logging
+gcloud services enable logging.googleapis.com
+gcloud services enable monitoring.googleapis.com
+
+# AI Services (if applicable)
+gcloud services enable aiplatform.googleapis.com
+gcloud services enable ml.googleapis.com
+```
+
+Or enable all at once:
+
+```bash
+gcloud services enable \
+  compute.googleapis.com \
+  storage.googleapis.com \
+  iam.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  servicenetworking.googleapis.com \
+  dns.googleapis.com \
+  secretmanager.googleapis.com \
+  cloudkms.googleapis.com \
+  logging.googleapis.com \
+  monitoring.googleapis.com \
+  aiplatform.googleapis.com \
+  ml.googleapis.com
+```
+
+## Local Development Setup
+
+### Authentication
+
+Set up application default credentials:
+
+```bash
+gcloud auth application-default login
+```
+
+This allows Terraform and other tools to authenticate automatically.
+
+### Verify Access
+
+Test your access:
+
+```bash
+# List projects
+gcloud projects list
+
+# Get current project
+gcloud config get-value project
+
+# Test compute access
+gcloud compute zones list
+
+# Test storage access
+gcloud storage buckets list
+```
+
+## Optional but Recommended
+
+### Terraform Linting
+
+Install `tflint` for Terraform code linting:
+
+```bash
+# Windows (using Chocolatey)
+choco install tflint
+
+# macOS
+brew install tflint
+
+# Linux
+wget https://github.com/terraform-linters/tflint/releases/download/v0.48.0/tflint_linux_amd64.zip
+unzip tflint_linux_amd64.zip
+sudo mv tflint /usr/local/bin/
+```
+
+### Terraform Formatting
+
+Terraform includes a built-in formatter:
+
+```bash
+terraform fmt -recursive
+```
+
+### Pre-commit Hooks
+
+Install pre-commit hooks for automatic formatting and validation:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+### Docker (For Local Testing)
+
+If you plan to test containers locally:
+
+```bash
+# Windows/macOS: Install Docker Desktop
+# Linux
+sudo apt-get install docker.io  # Debian/Ubuntu
+sudo yum install docker         # RHEL/CentOS
+```
+
+## Environment Variables
+
+Set the following environment variables (optional but recommended):
+
+```bash
+# Google Cloud
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account-key.json"  # If using service account
+
+# Terraform
+export TF_LOG=INFO  # For debugging (optional)
+export TF_VAR_project_id="your-project-id"  # If not using tfvars
+```
+
+## Verification Checklist
+
+Before proceeding, verify you have:
+
+- [ ] GCP account with billing enabled
+- [ ] Appropriate IAM roles assigned
+- [ ] Terraform >= 1.5.0 installed
+- [ ] Google Cloud SDK installed and configured
+- [ ] Git installed and configured
+- [ ] Required APIs enabled
+- [ ] Application default credentials configured
+- [ ] Access to the project verified
+- [ ] Text editor/IDE with Terraform support
+
+## Troubleshooting
+
+### Authentication Issues
+
+If you encounter authentication errors:
+
+```bash
+# Re-authenticate
+gcloud auth login
+gcloud auth application-default login
+
+# Verify credentials
+gcloud auth list
+```
+
+### Permission Issues
+
+If you get permission denied errors:
+
+1. Verify your IAM roles: `gcloud projects get-iam-policy PROJECT_ID`
+2. Check organization policies: `gcloud resource-manager org-policies list`
+3. Contact your GCP administrator
+
+### API Not Enabled
+
+If you get "API not enabled" errors:
+
+```bash
+# Enable the specific API
+gcloud services enable API_NAME
+
+# List enabled APIs
+gcloud services list --enabled
+```
+
+## Next Steps
+
+Once you have all prerequisites in place:
+
+1. [Setup Guide](/developer-guide/setup) - Set up your development environment
+2. [Authentication](/developer-guide/authentication) - Configure authentication
+3. [Quickstart](/quickstart) - Deploy your first infrastructure
+
+---
+
+**Related Documentation**:
+- [Setup Guide](/developer-guide/setup)
+- [Authentication](/developer-guide/authentication)
+- [Terraform Overview](/terraform/overview)
+

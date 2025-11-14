@@ -1,0 +1,123 @@
+---
+title: Monitoring Services
+description: Cloud Monitoring, Logging, and observability
+---
+
+# Monitoring Services
+
+This document describes monitoring and observability services: Cloud Monitoring, Cloud Logging, and Cloud Trace.
+
+## Cloud Monitoring
+
+### Dashboards
+
+```hcl
+resource "google_monitoring_dashboard" "main" {
+  dashboard_json = jsonencode({
+    displayName = "Main Dashboard"
+    mosaicLayout = {
+      tiles = [
+        {
+          width  = 6
+          height = 4
+          widget = {
+            title = "CPU Utilization"
+            xyChart = {
+              dataSets = [{
+                timeSeriesQuery = {
+                  timeSeriesFilter = {
+                    filter = "resource.type=\"gce_instance\""
+                    aggregation = {
+                      alignmentPeriod    = "60s"
+                      perSeriesAligner   = "ALIGN_MEAN"
+                      crossSeriesReducer = "REDUCE_MEAN"
+                    }
+                  }
+                }
+              }]
+            }
+          }
+        }
+      ]
+    }
+  })
+}
+```
+
+### Alert Policies
+
+```hcl
+resource "google_monitoring_alert_policy" "high_cpu" {
+  display_name = "High CPU Usage"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "CPU utilization"
+
+    condition_threshold {
+      filter          = "resource.type=\"gce_instance\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0.8
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+}
+```
+
+## Cloud Logging
+
+### Log Sinks
+
+```hcl
+resource "google_logging_project_sink" "main" {
+  name        = "main-sink"
+  destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/logs"
+
+  filter = "resource.type=\"gce_instance\""
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
+}
+```
+
+## Cloud Trace
+
+### Configuration
+
+Cloud Trace is automatically enabled for App Engine and Cloud Run. For other services:
+
+```python
+from google.cloud import trace
+from google.cloud.trace import tracer
+
+def trace_function():
+    client = trace.Client()
+    tracer = client.tracer()
+    
+    with tracer.span(name='my-operation'):
+        # Your code here
+        pass
+```
+
+## Best Practices
+
+- Set up comprehensive dashboards
+- Configure meaningful alerts
+- Export logs to BigQuery
+- Use distributed tracing
+- Monitor SLOs
+
+## Next Steps
+
+- [Operations Monitoring](/operations/monitoring) - Operations monitoring
+- [Operations Logging](/operations/logging) - Logging setup
+
+---
+
+**Related Documentation**:
+- [Architecture Overview](/architecture/overview)
+- [Operations Overview](/operations/monitoring)
+

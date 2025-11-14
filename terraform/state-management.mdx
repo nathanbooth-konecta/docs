@@ -1,0 +1,459 @@
+---
+title: Terraform State Management
+description: State management configuration and best practices
+---
+
+# Terraform State Management
+
+This document describes how Terraform state is managed for the Google Cloud infrastructure.
+
+## What is Terraform State?
+
+Terraform state is a file that tracks the mapping between your configuration and real-world resources. It stores:
+
+- Resource metadata
+- Resource dependencies
+- Resource attributes
+- Provider configuration
+
+## State Storage
+
+### Local State (Development Only)
+
+By default, Terraform stores state locally in `terraform.tfstate`:
+
+```hcl
+# No backend configuration = local state
+terraform {
+  required_version = ">= 1.5.0"
+}
+```
+
+**⚠️ Warning**: Never use local state in production. It's not shared, not backed up, and can cause conflicts.
+
+### Remote State with GCS Backend
+
+For production, use Google Cloud Storage (GCS) as the backend:
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+  
+  backend "gcs" {
+    bucket = "terraform-state-bucket"
+    prefix = "agentic-ai-infrastructure"
+  }
+}
+```
+
+### Backend Configuration
+
+#### GCS Backend
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket      = "terraform-state-bucket"
+    prefix      = "agentic-ai-infrastructure"
+    credentials = "path/to/credentials.json"  # Optional
+  }
+}
+```
+
+#### Backend with Encryption
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket      = "terraform-state-bucket"
+    prefix      = "agentic-ai-infrastructure"
+    encryption_key = "projects/PROJECT_ID/locations/LOCATION/keyRings/KEYRING/cryptoKeys/KEY"
+  }
+}
+```
+
+## State Locking
+
+### Why State Locking?
+
+State locking prevents concurrent modifications that could corrupt the state file.
+
+### GCS Backend Locking
+
+GCS backend uses Cloud Storage object versioning for locking:
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket = "terraform-state-bucket"
+    prefix = "agentic-ai-infrastructure"
+  }
+}
+```
+
+When you run `terraform apply`, Terraform:
+1. Creates a lock file in GCS
+2. Performs the operation
+3. Releases the lock
+
+### Handling Lock Errors
+
+If a lock exists:
+
+```bash
+Error: Error acquiring the state lock
+
+Lock Info:
+  ID:        12345678-1234-1234-1234-123456789012
+  Path:      terraform-state-bucket/agentic-ai-infrastructure/default.tflock
+  Operation: OperationTypeApply
+  Who:       user@example.com
+  Version:   1.5.0
+  Created:   2024-01-01 12:00:00 +0000 UTC
+  Info:      Locked by another process
+```
+
+**Options**:
+1. Wait for the lock to be released
+2. Force unlock (only if safe): `terraform force-unlock <LOCK_ID>`
+
+## State Organization
+
+### Environment-Based Organization
+
+```
+terraform-state-bucket/
+├── dev/
+│   ├── default.tfstate
+│   └── default.tflock
+├── staging/
+│   ├── default.tfstate
+│   └── default.tflock
+└── production/
+    ├── default.tfstate
+    └── default.tflock
+```
+
+### Component-Based Organization
+
+```
+terraform-state-bucket/
+├── network/
+│   ├── default.tfstate
+│   └── default.tflock
+├── compute/
+│   ├── default.tfstate
+│   └── default.tflock
+└── storage/
+    ├── default.tfstate
+    └── default.tflock
+```
+
+### Workspaces
+
+Use Terraform workspaces for environment separation:
+
+```bash
+# Create workspace
+terraform workspace new dev
+terraform workspace new staging
+terraform workspace new production
+
+# Select workspace
+terraform workspace select dev
+
+# List workspaces
+terraform workspace list
+```
+
+With workspaces, state is stored as:
+```
+terraform-state-bucket/
+├── env:/dev/
+│   ├── default.tfstate
+│   └── default.tflock
+├── env:/staging/
+│   ├── default.tfstate
+│   └── default.tflock
+└── env:/production/
+    ├── default.tfstate
+    └── default.tflock
+```
+
+## State Backend Setup
+
+### Creating State Bucket
+
+```hcl
+resource "google_storage_bucket" "terraform_state" {
+  name          = "terraform-state-bucket"
+  location      = "US"
+  force_destroy = false
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.state_key.id
+  }
+}
+```
+
+### State Bucket IAM
+
+```hcl
+resource "google_storage_bucket_iam_member" "terraform_state_access" {
+  bucket = google_storage_bucket.terraform_state.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.terraform.email}"
+}
+```
+
+## State Operations
+
+### Viewing State
+
+```bash
+# List resources in state
+terraform state list
+
+# Show specific resource
+terraform state show google_compute_instance.main
+
+# Show all resources
+terraform state show
+```
+
+### Modifying State
+
+#### Moving Resources
+
+```bash
+# Move resource to different address
+terraform state mv \
+  google_compute_instance.old_name \
+  google_compute_instance.new_name
+```
+
+#### Removing Resources
+
+```bash
+# Remove resource from state (doesn't destroy it)
+terraform state rm google_compute_instance.main
+```
+
+#### Importing Resources
+
+```bash
+# Import existing resource into state
+terraform import google_compute_instance.main projects/PROJECT_ID/zones/ZONE/instances/INSTANCE_NAME
+```
+
+### State Refresh
+
+```bash
+# Refresh state to match real infrastructure
+terraform refresh
+
+# Refresh and update
+terraform apply -refresh-only
+```
+
+## Remote State Data Source
+
+### Reading Remote State
+
+```hcl
+data "terraform_remote_state" "network" {
+  backend = "gcs"
+  config = {
+    bucket = "terraform-state-bucket"
+    prefix = "network"
+  }
+}
+
+resource "google_compute_instance" "app" {
+  network = data.terraform_remote_state.network.outputs.vpc_network_id
+  # ...
+}
+```
+
+### Remote State with Workspaces
+
+```hcl
+data "terraform_remote_state" "network" {
+  backend = "gcs"
+  config = {
+    bucket    = "terraform-state-bucket"
+    prefix    = "network"
+    workspace = "production"
+  }
+}
+```
+
+## State Security
+
+### Encryption
+
+#### At Rest
+
+Enable encryption for state bucket:
+
+```hcl
+resource "google_storage_bucket" "terraform_state" {
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.state_key.id
+  }
+}
+```
+
+#### In Transit
+
+Terraform uses HTTPS for all GCS operations.
+
+### Access Control
+
+#### IAM Policies
+
+```hcl
+# Read-only access
+resource "google_storage_bucket_iam_member" "readonly" {
+  bucket = google_storage_bucket.terraform_state.name
+  role   = "roles/storage.objectViewer"
+  member = "user:readonly@example.com"
+}
+
+# Full access
+resource "google_storage_bucket_iam_member" "admin" {
+  bucket = google_storage_bucket.terraform_state.name
+  role   = "roles/storage.objectAdmin"
+  member = "user:admin@example.com"
+}
+```
+
+### State File Contents
+
+**⚠️ Warning**: State files may contain sensitive data. Never commit them to version control.
+
+Use `.gitignore`:
+
+```
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files
+*.tfvars
+*.tfvars.json
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+```
+
+## State Backup and Recovery
+
+### Versioning
+
+Enable versioning on state bucket:
+
+```hcl
+resource "google_storage_bucket" "terraform_state" {
+  versioning {
+    enabled = true
+  }
+}
+```
+
+### Backup Strategy
+
+1. **Versioning**: Automatic backups via GCS versioning
+2. **Snapshots**: Regular state snapshots
+3. **Replication**: Cross-region replication for disaster recovery
+
+### Recovery
+
+To recover from a corrupted state:
+
+```bash
+# List state versions
+gsutil ls -a gs://terraform-state-bucket/path/to/state
+
+# Restore previous version
+gsutil cp gs://terraform-state-bucket/path/to/state#<GENERATION> \
+  gs://terraform-state-bucket/path/to/state
+```
+
+## State Best Practices
+
+1. **Use Remote State**: Always use remote state in production
+2. **Enable Versioning**: Enable versioning on state bucket
+3. **Encrypt State**: Use KMS encryption for state files
+4. **Limit Access**: Restrict who can access state files
+5. **Use Workspaces**: Separate state per environment
+6. **Backup Regularly**: Implement backup strategy
+7. **Never Commit State**: Don't commit state files to Git
+8. **Use State Locking**: Always use state locking
+9. **Document State**: Document state structure and organization
+10. **Monitor State**: Monitor state file size and operations
+
+## Troubleshooting
+
+### State Lock Issues
+
+**Problem**: State is locked by another process
+
+**Solution**: 
+- Wait for the operation to complete
+- If stuck, verify the process is still running
+- As last resort, force unlock: `terraform force-unlock <LOCK_ID>`
+
+### State Drift
+
+**Problem**: State doesn't match real infrastructure
+
+**Solution**:
+- Run `terraform refresh` to sync state
+- Use `terraform plan` to see differences
+- Apply changes to reconcile
+
+### Large State Files
+
+**Problem**: State file is too large
+
+**Solution**:
+- Split infrastructure into multiple configurations
+- Use modules to organize resources
+- Remove unused resources from state
+
+## Next Steps
+
+- [Terraform Overview](/terraform/overview) - Terraform introduction
+- [Directory Structure](/terraform/directory-structure) - Project structure
+- [Best Practices](/terraform/best-practices) - Best practices
+
+---
+
+**Related Documentation**:
+- [Variables](/terraform/variables)
+- [Outputs](/terraform/outputs)
+

@@ -1,0 +1,288 @@
+---
+title: Architecture Overview
+description: Comprehensive overview of the Google Cloud architecture for Agentic AI solutions
+---
+
+# Architecture Overview
+
+This document provides a detailed overview of the Google Cloud Platform architecture designed to host Agentic AI solutions, including integrations with 11Labs and CrewAI.
+
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Internet / Users                          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Cloud Load Balancer                           │
+│              (Global / Regional Load Balancing)                  │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Region 1   │    │   Region 2   │    │   Region 3   │
+│  (Primary)   │    │  (Secondary) │    │  (Tertiary)  │
+└──────┬───────┘    └──────┬───────┘    └──────┬───────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    VPC Network (Multi-Region)                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │   Subnet 1   │  │   Subnet 2   │  │   Subnet 3   │       │
+│  │  (Compute)   │  │  (Services)  │  │  (Database)  │       │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘       │
+└─────────┼──────────────────┼──────────────────┼──────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│  Compute Engine │  │   Cloud Run     │  │   GKE Cluster   │
+│   Instances     │  │  (Containers)   │  │  (Orchestration)│
+└────────┬────────┘  └────────┬────────┘  └────────┬────────┘
+         │                    │                     │
+         └────────────────────┼─────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Shared Services Layer                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ Cloud SQL    │  │ Cloud Storage│  │  Pub/Sub     │       │
+│  │ (Database)   │  │  (Artifacts) │  │  (Messaging) │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    AI Services Integration                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │   11Labs     │  │   CrewAI     │  │  Vertex AI   │       │
+│  │  (Voice AI)  │  │  (Agents)    │  │  (ML Platform)│      │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│              Security & Operations Layer                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ Cloud IAM    │  │ Cloud KMS    │  │  Monitoring  │       │
+│  │ (Access)     │  │ (Encryption) │  │  & Logging   │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Networking Layer
+
+**Virtual Private Cloud (VPC)**
+- Multi-region VPC network for global connectivity
+- Subnets organized by function (compute, services, database)
+- Private Google Access enabled for secure API access
+- VPC peering for cross-project connectivity (if needed)
+
+**Load Balancing**
+- Global HTTP(S) Load Balancer for web traffic
+- Regional load balancers for internal services
+- Health checks and automatic failover
+- SSL/TLS termination
+
+**Firewall Rules**
+- Ingress rules for allowed traffic
+- Egress rules for outbound connections
+- Network tags for resource grouping
+- Service account-based firewall rules
+
+### 2. Compute Layer
+
+**Compute Engine**
+- Managed instance groups for auto-scaling
+- Preemptible instances for cost optimization
+- Custom machine types for specific workloads
+- Shielded VMs for enhanced security
+
+**Cloud Run**
+- Serverless container platform
+- Auto-scaling from zero to thousands
+- Pay-per-use pricing model
+- Built-in HTTPS and authentication
+
+**Google Kubernetes Engine (GKE)**
+- Managed Kubernetes clusters (optional)
+- Node auto-scaling
+- Pod auto-scaling (HPA/VPA)
+- Workload identity for secure access
+
+### 3. Storage Layer
+
+**Cloud Storage**
+- Multi-regional buckets for high availability
+- Lifecycle policies for cost optimization
+- Versioning and object retention
+- Fine-grained access controls
+
+**Cloud SQL**
+- Managed PostgreSQL or MySQL databases
+- Automated backups and point-in-time recovery
+- Read replicas for scaling reads
+- High availability configurations
+
+**Firestore**
+- NoSQL document database
+- Real-time synchronization
+- Automatic scaling
+- Strong consistency guarantees
+
+### 4. AI Services Integration
+
+**11Labs Integration**
+- API gateway for 11Labs endpoints
+- Secure API key management via Secret Manager
+- Rate limiting and quota management
+- Monitoring for API usage and costs
+
+**CrewAI Integration**
+- Container hosting for CrewAI agents
+- Message queue (Pub/Sub) for agent communication
+- State management (Firestore/Cloud SQL)
+- Agent orchestration and coordination
+
+**Vertex AI**
+- Model training and serving
+- AutoML for custom models
+- Model monitoring and explainability
+- Batch and online prediction
+
+### 5. Security Layer
+
+**Identity and Access Management (IAM)**
+- Service accounts for applications
+- Custom roles with least privilege
+- Organization policies for compliance
+- Workload Identity for GKE
+
+**Cloud KMS**
+- Encryption key management
+- Key rotation policies
+- Audit logging for key usage
+- Regional key storage
+
+**VPC Service Controls**
+- Perimeter security for APIs
+- Data exfiltration prevention
+- Service-to-service communication controls
+
+**Cloud Armor**
+- DDoS protection
+- WAF rules for application security
+- Rate limiting and IP filtering
+
+### 6. Operations Layer
+
+**Cloud Monitoring**
+- Custom dashboards
+- Alerting policies
+- Uptime checks
+- Service-level objectives (SLOs)
+
+**Cloud Logging**
+- Centralized log aggregation
+- Log-based metrics
+- Log retention policies
+- Export to BigQuery for analysis
+
+**Cloud Trace**
+- Distributed tracing
+- Performance analysis
+- Latency optimization
+- Service dependency mapping
+
+## Data Flow
+
+### Request Flow
+
+1. **User Request** → Cloud Load Balancer
+2. **Load Balancer** → Routes to appropriate region/instance
+3. **Application** → Processes request, may call:
+   - Database (Cloud SQL/Firestore)
+   - Storage (Cloud Storage)
+   - AI Services (11Labs, CrewAI, Vertex AI)
+4. **Response** → Returns to user via Load Balancer
+
+### AI Agent Workflow
+
+1. **Trigger** → Event or API call initiates agent workflow
+2. **Orchestration** → CrewAI coordinates multiple agents
+3. **Processing** → Agents perform tasks:
+   - Data retrieval
+   - AI processing (Vertex AI)
+   - Voice synthesis (11Labs)
+   - Decision making
+4. **Communication** → Pub/Sub for agent-to-agent messaging
+5. **State Management** → Firestore/Cloud SQL for agent state
+6. **Response** → Results returned to caller
+
+## High Availability Design
+
+### Multi-Region Deployment
+
+- **Primary Region**: Active production traffic
+- **Secondary Region**: Failover and read replicas
+- **Tertiary Region**: Disaster recovery
+
+### Failover Strategy
+
+- Automatic failover via load balancer health checks
+- Database replication across regions
+- State synchronization for stateless services
+- DNS failover for complete region outages
+
+### Disaster Recovery
+
+- Automated backups with point-in-time recovery
+- Cross-region backup replication
+- Documented recovery procedures
+- Regular disaster recovery testing
+
+## Scalability Design
+
+### Horizontal Scaling
+
+- Auto-scaling instance groups
+- Cloud Run automatic scaling
+- GKE horizontal pod autoscaling
+- Load balancer distribution
+
+### Vertical Scaling
+
+- Machine type upgrades
+- Database instance size increases
+- Storage capacity expansion
+
+### Cost Optimization
+
+- Preemptible instances for non-critical workloads
+- Committed use discounts
+- Right-sizing recommendations
+- Automated resource scheduling
+
+## Security Architecture
+
+See [Security Architecture](/architecture/security-architecture) for detailed security design.
+
+## Next Steps
+
+- [Design Principles](/architecture/design-principles) - Core design principles
+- [Component Diagram](/architecture/component-diagram) - Detailed component documentation
+- [Blueprints](/architecture/blueprints) - Reference architectures
+- [Networking](/architecture/networking) - Network architecture details
+
+---
+
+**Related Documentation**:
+- [Terraform Overview](/terraform/overview)
+- [Security Overview](/security/overview)
+- [Developer Guide](/developer-guide/deployment)
+

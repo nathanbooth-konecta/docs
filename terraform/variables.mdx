@@ -1,0 +1,453 @@
+---
+title: Terraform Variables
+description: Variable reference and configuration guide
+---
+
+# Terraform Variables
+
+This document describes the variables used in the Terraform configuration for Google Cloud infrastructure.
+
+## Variable Types
+
+### String Variables
+
+```hcl
+variable "project_id" {
+  description = "The GCP project ID"
+  type        = string
+}
+```
+
+### Number Variables
+
+```hcl
+variable "instance_count" {
+  description = "Number of instances to create"
+  type        = number
+  default     = 1
+}
+```
+
+### Boolean Variables
+
+```hcl
+variable "enable_monitoring" {
+  description = "Enable monitoring"
+  type        = bool
+  default     = true
+}
+```
+
+### List Variables
+
+```hcl
+variable "regions" {
+  description = "List of GCP regions"
+  type        = list(string)
+  default     = ["us-central1", "us-east1"]
+}
+```
+
+### Map Variables
+
+```hcl
+variable "instance_tags" {
+  description = "Tags for instances"
+  type        = map(string)
+  default = {
+    environment = "production"
+    managed_by  = "terraform"
+  }
+}
+```
+
+### Object Variables
+
+```hcl
+variable "database_config" {
+  description = "Database configuration"
+  type = object({
+    name             = string
+    database_version = string
+    tier             = string
+    region           = string
+  })
+}
+```
+
+## Common Variables
+
+### Project Configuration
+
+```hcl
+variable "project_id" {
+  description = "The GCP project ID"
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.project_id))
+    error_message = "Project ID must be a valid GCP project ID."
+  }
+}
+
+variable "region" {
+  description = "The GCP region"
+  type        = string
+  default     = "us-central1"
+  
+  validation {
+    condition = contains([
+      "us-central1",
+      "us-east1",
+      "us-west1",
+      "europe-west1",
+      "asia-east1"
+    ], var.region)
+    error_message = "Region must be a supported GCP region."
+  }
+}
+
+variable "zone" {
+  description = "The GCP zone"
+  type        = string
+  default     = "us-central1-a"
+}
+```
+
+### Network Configuration
+
+```hcl
+variable "vpc_name" {
+  description = "Name of the VPC network"
+  type        = string
+  default     = "agentic-ai-vpc"
+}
+
+variable "subnets" {
+  description = "List of subnets to create"
+  type = list(object({
+    name          = string
+    ip_cidr_range = string
+    region        = string
+  }))
+  default = [
+    {
+      name          = "compute"
+      ip_cidr_range = "10.0.1.0/24"
+      region        = "us-central1"
+    }
+  ]
+}
+```
+
+### Compute Configuration
+
+```hcl
+variable "instance_name" {
+  description = "Name of the compute instance"
+  type        = string
+}
+
+variable "machine_type" {
+  description = "Machine type for instances"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "image" {
+  description = "Boot disk image"
+  type        = string
+  default     = "debian-cloud/debian-11"
+}
+
+variable "instance_count" {
+  description = "Number of instances"
+  type        = number
+  default     = 1
+}
+```
+
+### Storage Configuration
+
+```hcl
+variable "bucket_name" {
+  description = "Name of the Cloud Storage bucket"
+  type        = string
+}
+
+variable "bucket_location" {
+  description = "Location of the bucket"
+  type        = string
+  default     = "US"
+}
+
+variable "enable_versioning" {
+  description = "Enable bucket versioning"
+  type        = bool
+  default     = false
+}
+```
+
+### Security Configuration
+
+```hcl
+variable "service_accounts" {
+  description = "List of service accounts to create"
+  type = list(object({
+    account_id   = string
+    display_name = string
+    description  = optional(string)
+  }))
+  default = []
+}
+
+variable "enable_private_access" {
+  description = "Enable Private Google Access"
+  type        = bool
+  default     = true
+}
+```
+
+### AI Services Configuration
+
+```hcl
+variable "elevenlabs_api_key" {
+  description = "11Labs API key (stored in Secret Manager)"
+  type        = string
+  sensitive   = true
+}
+
+variable "enable_crewai" {
+  description = "Enable CrewAI integration"
+  type        = bool
+  default     = false
+}
+
+variable "crewai_cluster_config" {
+  description = "CrewAI cluster configuration"
+  type = object({
+    node_count       = number
+    machine_type     = string
+    enable_autoscaling = bool
+  })
+  default = {
+    node_count         = 3
+    machine_type       = "e2-standard-4"
+    enable_autoscaling = true
+  }
+}
+```
+
+## Variable Validation
+
+### String Validation
+
+```hcl
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  
+  validation {
+    condition     = contains(["dev", "staging", "production"], var.environment)
+    error_message = "Environment must be dev, staging, or production."
+  }
+}
+```
+
+### Number Validation
+
+```hcl
+variable "instance_count" {
+  description = "Number of instances"
+  type        = number
+  
+  validation {
+    condition     = var.instance_count > 0 && var.instance_count <= 10
+    error_message = "Instance count must be between 1 and 10."
+  }
+}
+```
+
+### Custom Validation
+
+```hcl
+variable "cidr_block" {
+  description = "CIDR block for subnet"
+  type        = string
+  
+  validation {
+    condition = can(cidrhost(var.cidr_block, 0))
+    error_message = "CIDR block must be a valid CIDR notation."
+  }
+}
+```
+
+## Variable Files
+
+### terraform.tfvars
+
+```hcl
+project_id = "my-gcp-project"
+region     = "us-central1"
+zone       = "us-central1-a"
+
+instance_name = "app-server"
+machine_type  = "e2-standard-4"
+
+environment = "production"
+```
+
+### Environment-Specific Files
+
+#### dev.tfvars
+
+```hcl
+project_id = "my-gcp-project-dev"
+region     = "us-central1"
+
+instance_count = 1
+machine_type   = "e2-small"
+
+environment = "dev"
+```
+
+#### production.tfvars
+
+```hcl
+project_id = "my-gcp-project-prod"
+region     = "us-central1"
+
+instance_count = 3
+machine_type   = "e2-standard-4"
+
+environment = "production"
+```
+
+## Using Variables
+
+### In Resources
+
+```hcl
+resource "google_compute_instance" "main" {
+  name         = var.instance_name
+  machine_type = var.machine_type
+  zone         = var.zone
+  # ...
+}
+```
+
+### In Modules
+
+```hcl
+module "network" {
+  source = "./modules/network"
+  
+  project_id = var.project_id
+  region     = var.region
+  vpc_name   = var.vpc_name
+}
+```
+
+### Conditional Logic
+
+```hcl
+resource "google_compute_instance" "main" {
+  count = var.instance_count
+  
+  name         = "${var.instance_name}-${count.index}"
+  machine_type = var.machine_type
+  # ...
+}
+```
+
+## Sensitive Variables
+
+### Marking Variables as Sensitive
+
+```hcl
+variable "api_key" {
+  description = "API key"
+  type        = string
+  sensitive   = true
+}
+```
+
+### Using Sensitive Variables
+
+```hcl
+resource "google_secret_manager_secret_version" "api_key" {
+  secret      = google_secret_manager_secret.api_key.id
+  secret_data = var.api_key  # Terraform will hide this in output
+}
+```
+
+## Variable Precedence
+
+Variables are loaded in this order (later sources override earlier):
+
+1. Environment variables (`TF_VAR_*`)
+2. `terraform.tfvars`
+3. `*.auto.tfvars`
+4. Command-line `-var` and `-var-file`
+5. Default values
+
+### Environment Variables
+
+```bash
+export TF_VAR_project_id="my-project"
+export TF_VAR_region="us-central1"
+terraform plan
+```
+
+### Command-Line Variables
+
+```bash
+terraform apply -var="instance_count=5" -var-file="production.tfvars"
+```
+
+## Variable Documentation
+
+### Best Practices
+
+1. **Always provide descriptions**: Document what each variable does
+2. **Use appropriate types**: Choose the right type for the data
+3. **Set sensible defaults**: Provide defaults when possible
+4. **Validate inputs**: Use validation blocks to catch errors early
+5. **Mark sensitive data**: Use `sensitive = true` for secrets
+6. **Organize variables**: Group related variables together
+7. **Document examples**: Provide example values in descriptions
+
+### Example Well-Documented Variable
+
+```hcl
+variable "instance_count" {
+  description = <<-EOT
+    Number of compute instances to create.
+    
+    For production environments, use at least 3 instances for high availability.
+    For development, 1 instance is sufficient.
+    
+    Example: 3
+  EOT
+  type        = number
+  default     = 1
+  
+  validation {
+    condition     = var.instance_count > 0 && var.instance_count <= 10
+    error_message = "Instance count must be between 1 and 10."
+  }
+}
+```
+
+## Next Steps
+
+- [Terraform Overview](/terraform/overview) - Terraform introduction
+- [Outputs](/terraform/outputs) - Output reference
+- [Modules](/terraform/modules) - Module usage
+- [Best Practices](/terraform/best-practices) - Best practices
+
+---
+
+**Related Documentation**:
+- [Directory Structure](/terraform/directory-structure)
+- [State Management](/terraform/state-management)
+

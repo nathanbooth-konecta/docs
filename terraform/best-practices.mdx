@@ -1,0 +1,576 @@
+---
+title: Terraform Best Practices
+description: Best practices for Terraform infrastructure as code
+---
+
+# Terraform Best Practices
+
+This document outlines best practices for using Terraform to manage Google Cloud infrastructure.
+
+## Code Organization
+
+### Directory Structure
+
+```
+terraform/
+├── main.tf                 # Root module
+├── variables.tf            # Input variables
+├── outputs.tf              # Output values
+├── versions.tf             # Provider versions
+├── terraform.tfvars        # Variable values (not in Git)
+├── backend.tf              # Backend configuration
+│
+├── modules/                # Reusable modules
+│   ├── network/
+│   ├── compute/
+│   └── storage/
+│
+├── environments/           # Environment configs
+│   ├── dev/
+│   ├── staging/
+│   └── production/
+│
+└── examples/              # Example configurations
+```
+
+### File Naming
+
+- Use descriptive names: `network.tf`, `compute.tf`
+- Group related resources: `security-iam.tf`, `security-kms.tf`
+- Keep files focused: One concern per file
+
+## Version Management
+
+### Provider Versions
+
+Always pin provider versions:
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+  
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+```
+
+### Module Versions
+
+Pin module versions:
+
+```hcl
+module "network" {
+  source = "git::https://github.com/example/modules.git//network?ref=v1.2.0"
+}
+```
+
+## Resource Naming
+
+### Consistent Naming Convention
+
+Use a consistent naming pattern:
+
+```hcl
+# Pattern: {environment}-{resource-type}-{purpose}-{region}
+resource "google_compute_instance" "main" {
+  name = "prod-compute-app-us-central1"
+}
+```
+
+### Use Variables for Names
+
+```hcl
+variable "environment" {
+  type = string
+}
+
+variable "project_name" {
+  type = string
+}
+
+locals {
+  name_prefix = "${var.environment}-${var.project_name}"
+}
+
+resource "google_compute_instance" "main" {
+  name = "${local.name_prefix}-compute-app"
+}
+```
+
+## Variables and Outputs
+
+### Variable Best Practices
+
+1. **Always provide descriptions**
+2. **Use appropriate types**
+3. **Set sensible defaults**
+4. **Validate inputs**
+5. **Mark sensitive data**
+
+```hcl
+variable "instance_count" {
+  description = "Number of instances to create"
+  type        = number
+  default     = 1
+  
+  validation {
+    condition     = var.instance_count > 0 && var.instance_count <= 10
+    error_message = "Instance count must be between 1 and 10."
+  }
+}
+```
+
+### Output Best Practices
+
+1. **Document all outputs**
+2. **Use meaningful names**
+3. **Mark sensitive outputs**
+4. **Only output what's needed**
+
+```hcl
+output "instance_id" {
+  description = "Instance ID"
+  value       = google_compute_instance.main.id
+}
+```
+
+## Modules
+
+### Module Design
+
+1. **Single Responsibility**: One purpose per module
+2. **Reusability**: Design for reuse
+3. **Composability**: Modules should work together
+4. **Documentation**: Document inputs and outputs
+
+### Module Structure
+
+```
+modules/network/
+├── main.tf           # Main resources
+├── variables.tf      # Input variables
+├── outputs.tf        # Output values
+├── versions.tf       # Provider versions
+└── README.md         # Documentation
+```
+
+### Module Usage
+
+```hcl
+module "network" {
+  source = "./modules/network"
+  
+  project_id = var.project_id
+  region     = var.region
+  
+  # Use variables, not hardcoded values
+  subnets = var.subnets
+}
+```
+
+## State Management
+
+### Remote State
+
+Always use remote state in production:
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket = "terraform-state-bucket"
+    prefix = "agentic-ai-infrastructure"
+  }
+}
+```
+
+### State Security
+
+1. **Encrypt state files**
+2. **Limit access with IAM**
+3. **Enable versioning**
+4. **Never commit state to Git**
+
+### Workspaces
+
+Use workspaces for environment separation:
+
+```bash
+terraform workspace new dev
+terraform workspace new staging
+terraform workspace new production
+```
+
+## Resource Management
+
+### Resource Dependencies
+
+Use explicit dependencies when needed:
+
+```hcl
+resource "google_compute_instance" "app" {
+  depends_on = [
+    google_compute_firewall.allow_http,
+    google_compute_subnetwork.main
+  ]
+}
+```
+
+### Resource Lifecycle
+
+Use lifecycle blocks for control:
+
+```hcl
+resource "google_compute_instance" "main" {
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = false
+    ignore_changes = [
+      tags
+    ]
+  }
+}
+```
+
+### Data Sources
+
+Use data sources for existing resources:
+
+```hcl
+data "google_compute_network" "existing" {
+  name = "existing-vpc"
+}
+
+resource "google_compute_instance" "main" {
+  network = data.google_compute_network.existing.self_link
+}
+```
+
+## Security
+
+### Secrets Management
+
+Never hardcode secrets:
+
+```hcl
+# ❌ Bad
+variable "api_key" {
+  default = "secret-key-12345"
+}
+
+# ✅ Good
+resource "google_secret_manager_secret" "api_key" {
+  secret_id = "api-key"
+}
+
+resource "google_secret_manager_secret_version" "api_key" {
+  secret      = google_secret_manager_secret.api_key.id
+  secret_data = var.api_key_value
+}
+```
+
+### IAM Best Practices
+
+1. **Principle of Least Privilege**
+2. **Use service accounts**
+3. **Create custom roles**
+4. **Use conditions**
+
+```hcl
+resource "google_project_iam_member" "minimal_access" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"  # Minimal role
+  member  = "serviceAccount:${google_service_account.app.email}"
+  
+  condition {
+    title       = "Time-based access"
+    description = "Access only during business hours"
+    expression  = "request.time.getHours() >= 9 && request.time.getHours() <= 17"
+  }
+}
+```
+
+## Performance
+
+### Parallelism
+
+Terraform runs operations in parallel by default. Control with:
+
+```bash
+terraform apply -parallelism=10
+```
+
+### Targeted Operations
+
+Apply changes to specific resources:
+
+```bash
+terraform apply -target=google_compute_instance.main
+```
+
+### Refresh Optimization
+
+Skip refresh when not needed:
+
+```bash
+terraform apply -refresh=false
+```
+
+## Testing
+
+### Validation
+
+Validate configuration:
+
+```bash
+terraform validate
+```
+
+### Formatting
+
+Format code:
+
+```bash
+terraform fmt -recursive
+```
+
+### Planning
+
+Always plan before apply:
+
+```bash
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+
+### Testing Strategy
+
+1. **Unit Tests**: Test modules in isolation
+2. **Integration Tests**: Test module composition
+3. **Validation**: Use `terraform validate`
+4. **Linting**: Use `tflint` or similar
+
+## Documentation
+
+### Code Comments
+
+Document complex logic:
+
+```hcl
+# Create subnets in each region for high availability
+resource "google_compute_subnetwork" "regional" {
+  for_each = var.regions
+  # ...
+}
+```
+
+### README Files
+
+Document modules and configurations:
+
+```markdown
+# Network Module
+
+Creates VPC network and subnets.
+
+## Usage
+
+\`\`\`hcl
+module "network" {
+  source = "./modules/network"
+  # ...
+}
+\`\`\`
+
+## Inputs
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| project_id | GCP project ID | string | - |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| vpc_network_id | VPC network ID |
+```
+
+## CI/CD Integration
+
+### Pipeline Stages
+
+1. **Validate**: `terraform validate`
+2. **Format Check**: `terraform fmt -check`
+3. **Plan**: `terraform plan`
+4. **Review**: Manual review of plan
+5. **Apply**: `terraform apply` (after approval)
+
+### Example GitHub Actions
+
+```yaml
+name: Terraform
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      
+      - name: Terraform Init
+        run: terraform init
+      
+      - name: Terraform Validate
+        run: terraform validate
+      
+      - name: Terraform Format Check
+        run: terraform fmt -check
+      
+      - name: Terraform Plan
+        run: terraform plan
+```
+
+## Error Handling
+
+### Graceful Degradation
+
+Handle errors gracefully:
+
+```hcl
+resource "google_compute_instance" "main" {
+  count = var.enable_instance ? 1 : 0
+  # ...
+}
+```
+
+### Error Messages
+
+Provide helpful error messages:
+
+```hcl
+variable "region" {
+  validation {
+    condition     = contains(["us-central1", "us-east1"], var.region)
+    error_message = "Region must be us-central1 or us-east1."
+  }
+}
+```
+
+## Cost Optimization
+
+### Resource Tagging
+
+Tag resources for cost tracking:
+
+```hcl
+resource "google_compute_instance" "main" {
+  labels = {
+    environment = var.environment
+    cost-center = "engineering"
+    managed-by  = "terraform"
+  }
+}
+```
+
+### Right-Sizing
+
+Use appropriate resource sizes:
+
+```hcl
+variable "machine_type" {
+  description = "Machine type based on workload"
+  type        = string
+  default     = "e2-medium"  # Start small, scale up
+}
+```
+
+### Lifecycle Policies
+
+Implement lifecycle policies:
+
+```hcl
+resource "google_storage_bucket" "main" {
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+```
+
+## Common Pitfalls
+
+### ❌ Don't Do This
+
+```hcl
+# Hardcoded values
+resource "google_compute_instance" "main" {
+  name = "my-instance"
+  machine_type = "e2-medium"
+}
+
+# No version pinning
+terraform {
+  required_providers {
+    google = {}
+  }
+}
+
+# Committing secrets
+variable "password" {
+  default = "secret123"
+}
+```
+
+### ✅ Do This Instead
+
+```hcl
+# Use variables
+resource "google_compute_instance" "main" {
+  name         = var.instance_name
+  machine_type = var.machine_type
+}
+
+# Pin versions
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# Use Secret Manager
+resource "google_secret_manager_secret" "password" {
+  secret_id = "password"
+}
+```
+
+## Next Steps
+
+- [Terraform Overview](/terraform/overview) - Terraform introduction
+- [Modules](/terraform/modules) - Module usage
+- [State Management](/terraform/state-management) - State configuration
+- [Variables](/terraform/variables) - Variable reference
+
+---
+
+**Related Documentation**:
+- [Directory Structure](/terraform/directory-structure)
+- [Outputs](/terraform/outputs)
+

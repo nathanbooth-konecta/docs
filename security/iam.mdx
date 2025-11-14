@@ -1,0 +1,68 @@
+---
+title: IAM Configuration
+description: Identity and Access Management setup and best practices
+---
+
+# IAM Configuration
+
+This document describes Identity and Access Management (IAM) configuration for the infrastructure.
+
+## Overview
+
+IAM controls who has what access to which resources in Google Cloud.
+
+## Service Accounts
+
+### Creating Service Accounts
+
+```hcl
+resource "google_service_account" "app" {
+  account_id   = "app-service"
+  display_name = "Application Service Account"
+  description  = "Service account for application workloads"
+}
+```
+
+### Granting Permissions
+
+```hcl
+resource "google_project_iam_member" "app_permissions" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.app.email}"
+}
+```
+
+## Custom Roles
+
+### Creating Custom Roles
+
+```hcl
+resource "google_project_iam_custom_role" "custom_role" {
+  role_id     = "customAppRole"
+  title       = "Custom Application Role"
+  description = "Custom role with minimal permissions"
+  permissions = [
+    "storage.objects.get",
+    "storage.objects.list"
+  ]
+}
+```
+
+## Best Practices
+
+- Use least privilege
+- Use service accounts for applications
+- Create custom roles when needed
+- Regular access reviews
+
+## Next Steps
+
+- [Security Overview](/security/overview) - Security overview
+- [Data Protection](/security/data-protection) - Data security
+
+---
+
+**Related Documentation**:
+- [Security Architecture](/architecture/security-architecture)
+

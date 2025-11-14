@@ -1,0 +1,183 @@
+---
+title: Overview
+description: High-level overview of the Google Cloud infrastructure for Agentic AI solutions
+---
+
+# Infrastructure Overview
+
+This document provides a high-level overview of the Google Cloud Platform infrastructure designed to host and support Agentic AI solutions, including integrations with 11Labs and CrewAI.
+
+## Purpose
+
+The infrastructure is designed to provide a scalable, secure, and reliable hosting environment for Agentic AI applications that transform customer operations through autonomous AI agents. This platform enables:
+
+- **Multi-Agent AI Orchestration**: Coordinated AI agents working together to solve complex problems
+- **Voice Synthesis Services**: Integration with 11Labs for text-to-speech and voice generation
+- **Customer Operations Automation**: AI-powered solutions that enhance operational efficiency
+- **Scalable Architecture**: Infrastructure that grows with customer demand
+
+## High-Level Architecture
+
+The infrastructure is built on Google Cloud Platform and consists of several key components:
+
+### Core Infrastructure Components
+
+1. **Compute Resources**
+   - Compute Engine instances for application hosting
+   - Cloud Run for containerized workloads
+   - Kubernetes Engine (GKE) for orchestration (if applicable)
+
+2. **Storage Services**
+   - Cloud Storage buckets for data and artifacts
+   - Cloud SQL or Firestore for databases
+   - Persistent disks for application data
+
+3. **Networking**
+   - Virtual Private Cloud (VPC) networks
+   - Cloud Load Balancing for traffic distribution
+   - Cloud CDN for content delivery
+   - Private Google Access for secure service communication
+
+4. **AI & ML Services**
+   - Vertex AI for machine learning workloads
+   - AI Platform APIs for model serving
+   - Integration endpoints for 11Labs and CrewAI
+
+5. **Security & Identity**
+   - Identity and Access Management (IAM)
+   - Cloud Identity for user management
+   - VPC Service Controls for data isolation
+   - Cloud KMS for encryption key management
+
+6. **Monitoring & Operations**
+   - Cloud Monitoring for metrics and alerts
+   - Cloud Logging for centralized logs
+   - Cloud Trace for distributed tracing
+   - Error Reporting for application errors
+
+## Key Design Principles
+
+### Scalability
+
+The infrastructure is designed to scale horizontally and vertically based on demand:
+
+- Auto-scaling groups for compute resources
+- Load balancing across multiple regions
+- Stateless application design where possible
+
+### Security
+
+Security is built into every layer:
+
+- Zero-trust networking principles
+- Least privilege IAM policies
+- Encryption at rest and in transit
+- Regular security audits and compliance checks
+
+### Reliability
+
+High availability and disaster recovery:
+
+- Multi-region deployment options
+- Automated backups and snapshots
+- Health checks and automatic failover
+- Disaster recovery procedures
+
+### Cost Optimization
+
+Efficient resource utilization:
+
+- Right-sized compute instances
+- Automated resource scheduling
+- Reserved capacity for predictable workloads
+- Cost monitoring and alerting
+
+## Infrastructure Layers
+
+### Layer 1: Foundation
+- Organization and project structure
+- Billing and cost management
+- IAM foundations
+- Network foundations
+
+### Layer 2: Core Services
+- Compute infrastructure
+- Storage infrastructure
+- Networking infrastructure
+- Security services
+
+### Layer 3: Application Services
+- AI service integrations
+- API gateways
+- Service mesh (if applicable)
+- Application load balancers
+
+### Layer 4: Operations
+- Monitoring and alerting
+- Logging and analysis
+- CI/CD pipelines
+- Backup and recovery
+
+## Integration Points
+
+### 11Labs Integration
+
+The infrastructure provides secure endpoints and networking for 11Labs services:
+
+- API gateway for 11Labs requests
+- Secure API key management
+- Rate limiting and quota management
+- Monitoring for API usage
+
+### CrewAI Integration
+
+Support for CrewAI multi-agent orchestration:
+
+- Container hosting for CrewAI agents
+- Message queue for agent communication
+- State management for agent coordination
+- Monitoring for agent performance
+
+## Deployment Models
+
+### Development Environment
+- Single region deployment
+- Minimal resource allocation
+- Cost-optimized for development
+
+### Staging Environment
+- Production-like configuration
+- Full monitoring and logging
+- Integration testing capabilities
+
+### Production Environment
+- Multi-region deployment
+- High availability configuration
+- Full security and compliance controls
+- Disaster recovery capabilities
+
+## Technology Stack
+
+- **Infrastructure as Code**: Terraform
+- **Cloud Provider**: Google Cloud Platform
+- **Container Orchestration**: Cloud Run / GKE (optional)
+- **CI/CD**: Cloud Build / GitHub Actions
+- **Monitoring**: Cloud Monitoring, Cloud Logging
+- **Security**: Cloud IAM, Cloud KMS, VPC Service Controls
+
+## Next Steps
+
+To dive deeper into specific areas:
+
+- [Architecture Overview](/architecture/overview) - Detailed architecture documentation
+- [Terraform Overview](/terraform/overview) - Infrastructure as Code details
+- [Developer Guide](/developer-guide/prerequisites) - Getting started with development
+- [Security Overview](/security/overview) - Security architecture and controls
+
+---
+
+**Related Documentation**:
+- [Design Principles](/architecture/design-principles)
+- [Component Diagram](/architecture/component-diagram)
+- [Quickstart Guide](/quickstart)
+

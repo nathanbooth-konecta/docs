@@ -1,0 +1,396 @@
+---
+title: AI Services Integration
+description: Integration with 11Labs, CrewAI, and other AI services
+---
+
+# AI Services Integration
+
+This document describes how the infrastructure integrates with AI services, specifically 11Labs and CrewAI, to support Agentic AI solutions.
+
+## Overview
+
+The infrastructure provides secure, scalable integration points for AI services that power our Agentic AI platform. These integrations enable:
+
+- **Voice Synthesis**: 11Labs text-to-speech and voice generation
+- **Multi-Agent Orchestration**: CrewAI agent coordination and management
+- **Machine Learning**: Vertex AI for custom ML models
+- **AI APIs**: Secure access to external AI services
+
+## 11Labs Integration
+
+### Architecture
+
+```
+Application
+    │
+    ▼
+API Gateway (Cloud Endpoints / Apigee)
+    │
+    ▼
+Secret Manager (API Keys)
+    │
+    ▼
+11Labs API
+```
+
+### Configuration
+
+#### API Key Management
+
+Store 11Labs API keys in Secret Manager:
+
+```hcl
+resource "google_secret_manager_secret" "elevenlabs_api_key" {
+  secret_id = "elevenlabs-api-key"
+  
+  replication {
+    automatic = true
+  }
+}
+
+resource "google_secret_manager_secret_version" "elevenlabs_api_key" {
+  secret      = google_secret_manager_secret.elevenlabs_api_key.id
+  secret_data = var.elevenlabs_api_key
+}
+```
+
+#### Service Account
+
+Create a dedicated service account for 11Labs access:
+
+```hcl
+resource "google_service_account" "elevenlabs_client" {
+  account_id   = "elevenlabs-client"
+  display_name = "11Labs API Client"
+}
+
+resource "google_secret_manager_secret_iam_member" "elevenlabs_key_access" {
+  secret_id = google_secret_manager_secret.elevenlabs_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.elevenlabs_client.email}"
+}
+```
+
+#### Rate Limiting
+
+Implement rate limiting to manage API usage:
+
+- Use Cloud Armor for request rate limiting
+- Implement application-level rate limiting
+- Monitor API quota usage
+- Set up alerts for quota limits
+
+### Usage Example
+
+```python
+from google.cloud import secretmanager
+import requests
+
+def get_elevenlabs_api_key():
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{PROJECT_ID}/secrets/elevenlabs-api-key/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode("UTF-8")
+
+def synthesize_speech(text, voice_id):
+    api_key = get_elevenlabs_api_key()
+    url = "https://api.elevenlabs.io/v1/text-to-speech/" + voice_id
+    
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": api_key
+    }
+    
+    data = {
+        "text": text,
+        "model_id": "eleven_monolingual_v1",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.5
+        }
+    }
+    
+    response = requests.post(url, json=data, headers=headers)
+    return response.content
+```
+
+### Monitoring
+
+Monitor 11Labs API usage:
+
+- **Metrics**: API call count, latency, error rate
+- **Costs**: Track API usage costs
+- **Quotas**: Monitor quota consumption
+- **Alerts**: Set up alerts for errors or quota limits
+
+## CrewAI Integration
+
+### Architecture
+
+```
+Trigger Event
+    │
+    ▼
+CrewAI Orchestrator (Cloud Run / GKE)
+    │
+    ├──► Agent 1 (Container)
+    ├──► Agent 2 (Container)
+    └──► Agent 3 (Container)
+    │
+    ▼
+Pub/Sub (Agent Communication)
+    │
+    ▼
+Firestore (Agent State)
+```
+
+### Infrastructure Components
+
+#### Container Hosting
+
+Host CrewAI agents in containers:
+
+**Option 1: Cloud Run** (Recommended for serverless)
+
+```hcl
+resource "google_cloud_run_service" "crewai_agent" {
+  name     = "crewai-agent"
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = "gcr.io/${var.project_id}/crewai-agent:latest"
+        
+        env {
+          name  = "PROJECT_ID"
+          value = var.project_id
+        }
+      }
+      
+      service_account_name = google_service_account.crewai_agent.email
+    }
+  }
+}
+```
+
+**Option 2: GKE** (For complex orchestration)
+
+```hcl
+resource "google_container_cluster" "crewai" {
+  name     = "crewai-cluster"
+  location = var.region
+
+  node_pool {
+    name       = "default"
+    node_count = 3
+    
+    node_config {
+      machine_type = "e2-standard-4"
+      service_account = google_service_account.crewai_agent.email
+    }
+  }
+}
+```
+
+#### Message Queue (Pub/Sub)
+
+Enable agent-to-agent communication:
+
+```hcl
+resource "google_pubsub_topic" "agent_communication" {
+  name = "agent-communication"
+}
+
+resource "google_pubsub_subscription" "agent_communication" {
+  name  = "agent-communication-sub"
+  topic = google_pubsub_topic.agent_communication.name
+}
+```
+
+#### State Management (Firestore)
+
+Store agent state and coordination data:
+
+```hcl
+resource "google_firestore_database" "crewai_state" {
+  project     = var.project_id
+  name        = "(default)"
+  location_id = var.region
+  type        = "FIRESTORE_NATIVE"
+}
+```
+
+### CrewAI Configuration
+
+Example CrewAI agent configuration:
+
+```python
+from crewai import Agent, Task, Crew
+from google.cloud import firestore
+from google.cloud import pubsub_v1
+
+# Initialize Firestore for state
+db = firestore.Client()
+
+# Initialize Pub/Sub for messaging
+publisher = pubsub_v1.PublisherClient()
+subscriber = pubsub_v1.SubscriberClient()
+
+# Define agents
+researcher = Agent(
+    role='Research Analyst',
+    goal='Research and analyze information',
+    backstory='Expert researcher with attention to detail'
+)
+
+writer = Agent(
+    role='Content Writer',
+    goal='Create compelling content',
+    backstory='Skilled writer with creative flair'
+)
+
+# Define tasks
+research_task = Task(
+    description='Research the topic',
+    agent=researcher
+)
+
+write_task = Task(
+    description='Write content based on research',
+    agent=writer
+)
+
+# Create crew
+crew = Crew(
+    agents=[researcher, writer],
+    tasks=[research_task, write_task]
+)
+
+# Execute
+result = crew.kickoff()
+```
+
+### Monitoring
+
+Monitor CrewAI agent performance:
+
+- **Agent Metrics**: Execution time, success rate, error rate
+- **Resource Usage**: CPU, memory, network
+- **Message Queue**: Pub/Sub message throughput and latency
+- **State Management**: Firestore read/write operations
+
+## Vertex AI Integration
+
+### Model Training
+
+Set up Vertex AI for custom model training:
+
+```hcl
+resource "google_vertex_ai_dataset" "training_data" {
+  display_name          = "training-dataset"
+  metadata_schema_uri   = "gs://google-cloud-aiplatform/schema/dataset/metadata/image_1.0.0.yaml"
+  region                = var.region
+}
+```
+
+### Model Serving
+
+Deploy models for inference:
+
+```hcl
+resource "google_vertex_ai_endpoint" "ml_endpoint" {
+  name         = "ml-endpoint"
+  display_name = "ML Model Endpoint"
+  location     = var.region
+}
+```
+
+## Security Considerations
+
+### API Key Security
+
+- Store all API keys in Secret Manager
+- Rotate keys regularly
+- Use service accounts for access
+- Audit key usage
+
+### Network Security
+
+- Use VPC Service Controls for API access
+- Implement firewall rules
+- Use private endpoints where possible
+- Monitor network traffic
+
+### Data Security
+
+- Encrypt data at rest and in transit
+- Implement data access controls
+- Audit data access
+- Comply with data residency requirements
+
+## Cost Optimization
+
+### 11Labs
+
+- Implement caching for repeated requests
+- Use rate limiting to control costs
+- Monitor usage and optimize calls
+- Consider batch processing
+
+### CrewAI
+
+- Use appropriate instance sizes
+- Implement auto-scaling
+- Use preemptible instances for non-critical workloads
+- Optimize container images
+
+### Vertex AI
+
+- Use batch prediction for large workloads
+- Right-size training jobs
+- Clean up unused models and endpoints
+- Monitor and optimize costs
+
+## Best Practices
+
+1. **Error Handling**: Implement robust error handling and retries
+2. **Rate Limiting**: Respect API rate limits
+3. **Caching**: Cache results when appropriate
+4. **Monitoring**: Monitor all AI service integrations
+5. **Cost Management**: Track and optimize costs
+6. **Security**: Follow security best practices
+7. **Documentation**: Document integration patterns
+
+## Troubleshooting
+
+### Common Issues
+
+**API Key Errors**
+- Verify key is stored in Secret Manager
+- Check IAM permissions
+- Verify key is not expired
+
+**Rate Limiting**
+- Implement exponential backoff
+- Use request queuing
+- Monitor quota usage
+
+**Agent Communication Issues**
+- Check Pub/Sub topic/subscription
+- Verify Firestore permissions
+- Check network connectivity
+
+## Next Steps
+
+- [Architecture Overview](/architecture/overview) - Overall architecture
+- [Security Overview](/security/overview) - Security best practices
+- [Monitoring](/operations/monitoring) - Monitoring AI services
+
+---
+
+**Related Documentation**:
+- [Services Overview](/services/compute)
+- [Security IAM](/security/iam)
+

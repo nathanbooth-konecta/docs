@@ -1,0 +1,463 @@
+---
+title: Terraform Modules
+description: Available Terraform modules and usage guide
+---
+
+# Terraform Modules
+
+This document describes the available Terraform modules for managing Google Cloud infrastructure for Agentic AI solutions.
+
+## Module Structure
+
+```
+modules/
+├── network/              # VPC and networking resources
+├── compute/              # Compute Engine resources
+├── storage/              # Storage resources
+├── security/             # Security and IAM resources
+├── monitoring/           # Monitoring and logging
+└── ai-services/          # AI service integrations
+```
+
+## Network Module
+
+### Overview
+
+The network module creates VPC networks, subnets, firewall rules, and related networking resources.
+
+### Usage
+
+```hcl
+module "network" {
+  source = "./modules/network"
+
+  project_id = var.project_id
+  region     = var.region
+  vpc_name   = "agentic-ai-vpc"
+
+  subnets = [
+    {
+      name          = "compute"
+      ip_cidr_range = "10.0.1.0/24"
+      region        = var.region
+    },
+    {
+      name          = "services"
+      ip_cidr_range = "10.0.2.0/24"
+      region        = var.region
+    },
+    {
+      name          = "database"
+      ip_cidr_range = "10.0.3.0/24"
+      region        = var.region
+    }
+  ]
+
+  enable_flow_logs = true
+  enable_nat       = true
+}
+```
+
+### Outputs
+
+- `vpc_network_id`: VPC network ID
+- `subnet_ids`: List of subnet IDs
+- `nat_gateway_ip`: NAT gateway IP address
+
+## Compute Module
+
+### Overview
+
+The compute module creates Compute Engine instances, instance groups, and related compute resources.
+
+### Usage
+
+```hcl
+module "compute" {
+  source = "./modules/compute"
+
+  project_id = var.project_id
+  region     = var.region
+  zone       = var.zone
+
+  instance_name = "app-server"
+  machine_type  = "e2-standard-4"
+  image         = "debian-cloud/debian-11"
+
+  network    = module.network.vpc_network_id
+  subnetwork = module.network.subnet_ids[0]
+
+  service_account_email = module.security.app_service_account_email
+
+  tags = ["http-server", "https-server"]
+}
+```
+
+### Outputs
+
+- `instance_ids`: List of instance IDs
+- `instance_group_id`: Instance group ID
+- `instance_ips`: List of instance IP addresses
+
+## Storage Module
+
+### Overview
+
+The storage module creates Cloud Storage buckets, Cloud SQL instances, and other storage resources.
+
+### Usage
+
+```hcl
+module "storage" {
+  source = "./modules/storage"
+
+  project_id = var.project_id
+  region     = var.region
+
+  buckets = [
+    {
+      name          = "app-assets"
+      location      = var.region
+      storage_class = "STANDARD"
+    },
+    {
+      name          = "app-backups"
+      location      = var.region
+      storage_class = "NEARLINE"
+    }
+  ]
+
+  sql_instances = [
+    {
+      name             = "main-db"
+      database_version = "POSTGRES_14"
+      tier             = "db-f1-micro"
+      region           = var.region
+    }
+  ]
+}
+```
+
+### Outputs
+
+- `bucket_names`: List of bucket names
+- `sql_instance_ids`: List of SQL instance IDs
+- `sql_connection_names`: List of SQL connection names
+
+## Security Module
+
+### Overview
+
+The security module creates IAM resources, service accounts, and security configurations.
+
+### Usage
+
+```hcl
+module "security" {
+  source = "./modules/security"
+
+  project_id = var.project_id
+
+  service_accounts = [
+    {
+      account_id   = "app-service"
+      display_name = "Application Service Account"
+    },
+    {
+      account_id   = "db-service"
+      display_name = "Database Service Account"
+    }
+  ]
+
+  custom_roles = [
+    {
+      role_id     = "customAppRole"
+      title       = "Custom Application Role"
+      permissions = [
+        "storage.objects.get",
+        "storage.objects.list"
+      ]
+    }
+  ]
+}
+```
+
+### Outputs
+
+- `service_account_emails`: Map of service account emails
+- `service_account_keys`: Map of service account keys (if created)
+- `custom_role_ids`: List of custom role IDs
+
+## Monitoring Module
+
+### Overview
+
+The monitoring module creates monitoring dashboards, alerting policies, and logging configurations.
+
+### Usage
+
+```hcl
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project_id = var.project_id
+
+  alert_policies = [
+    {
+      display_name = "High CPU Usage"
+      condition = {
+        filter          = "resource.type=\"gce_instance\""
+        threshold_value = 80
+        duration        = "300s"
+      }
+    },
+    {
+      display_name = "High Memory Usage"
+      condition = {
+        filter          = "resource.type=\"gce_instance\""
+        threshold_value = 85
+        duration        = "300s"
+      }
+    }
+  ]
+
+  notification_channels = [
+    {
+      type         = "email"
+      display_name = "Team Email"
+      labels = {
+        email_address = "team@example.com"
+      }
+    }
+  ]
+}
+```
+
+### Outputs
+
+- `alert_policy_ids`: List of alert policy IDs
+- `dashboard_ids`: List of dashboard IDs
+- `notification_channel_ids`: List of notification channel IDs
+
+## AI Services Module
+
+### Overview
+
+The AI services module creates resources for integrating with 11Labs, CrewAI, and Vertex AI.
+
+### Usage
+
+```hcl
+module "ai_services" {
+  source = "./modules/ai-services"
+
+  project_id = var.project_id
+  region     = var.region
+
+  elevenlabs_config = {
+    api_key_secret_name = "elevenlabs-api-key"
+    enable_rate_limiting = true
+  }
+
+  crewai_config = {
+    cluster_name     = "crewai-cluster"
+    node_count       = 3
+    machine_type     = "e2-standard-4"
+    enable_autoscaling = true
+  }
+
+  vertex_ai_config = {
+    enable_training = true
+    enable_serving  = true
+  }
+}
+```
+
+### Outputs
+
+- `elevenlabs_secret_id`: Secret Manager secret ID for 11Labs API key
+- `crewai_cluster_id`: GKE cluster ID for CrewAI
+- `vertex_ai_endpoint_id`: Vertex AI endpoint ID
+
+## Module Best Practices
+
+### Version Pinning
+
+Always pin module versions:
+
+```hcl
+module "network" {
+  source = "git::https://github.com/example/terraform-modules.git//network?ref=v1.2.0"
+}
+```
+
+### Variable Validation
+
+Validate module inputs:
+
+```hcl
+variable "region" {
+  description = "GCP region"
+  type        = string
+  
+  validation {
+    condition     = can(regex("^[a-z]+-[a-z]+[0-9]+$", var.region))
+    error_message = "Region must be a valid GCP region format."
+  }
+}
+```
+
+### Output Documentation
+
+Document all module outputs:
+
+```hcl
+output "vpc_network_id" {
+  description = "The ID of the VPC network"
+  value       = google_compute_network.main.id
+}
+```
+
+### Module Composition
+
+Compose modules to build complex infrastructure:
+
+```hcl
+module "network" {
+  source = "./modules/network"
+  # ...
+}
+
+module "compute" {
+  source = "./modules/compute"
+  network = module.network.vpc_network_id
+  # ...
+}
+
+module "storage" {
+  source = "./modules/storage"
+  # ...
+}
+```
+
+## Creating Custom Modules
+
+### Module Structure
+
+```
+modules/custom-module/
+├── main.tf           # Main resources
+├── variables.tf      # Input variables
+├── outputs.tf        # Output values
+├── versions.tf       # Provider versions
+└── README.md         # Documentation
+```
+
+### Example Custom Module
+
+```hcl
+# modules/custom-module/main.tf
+resource "google_compute_instance" "main" {
+  name         = var.instance_name
+  machine_type = var.machine_type
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = var.image
+    }
+  }
+
+  network_interface {
+    network = var.network
+  }
+}
+
+# modules/custom-module/variables.tf
+variable "instance_name" {
+  description = "Name of the instance"
+  type        = string
+}
+
+variable "machine_type" {
+  description = "Machine type"
+  type        = string
+  default     = "e2-medium"
+}
+
+# modules/custom-module/outputs.tf
+output "instance_id" {
+  description = "Instance ID"
+  value       = google_compute_instance.main.id
+}
+```
+
+## Module Testing
+
+### Local Testing
+
+Test modules locally:
+
+```bash
+cd modules/network
+terraform init
+terraform plan
+terraform apply
+```
+
+### Module Registry
+
+Publish modules to Terraform Registry or private registry:
+
+1. Tag releases: `git tag v1.0.0`
+2. Push tags: `git push origin v1.0.0`
+3. Publish to registry
+
+## Module Documentation
+
+### README Template
+
+```markdown
+# Module Name
+
+Brief description of the module.
+
+## Usage
+
+\`\`\`hcl
+module "example" {
+  source = "./modules/example"
+  # ...
+}
+\`\`\`
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|----------|
+| variable1 | Description | string | - | yes |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| output1 | Description |
+
+## Examples
+
+See examples/ directory for usage examples.
+```
+
+## Next Steps
+
+- [Terraform Overview](/terraform/overview) - Terraform introduction
+- [Variables](/terraform/variables) - Variable reference
+- [Outputs](/terraform/outputs) - Output reference
+- [Best Practices](/terraform/best-practices) - Best practices
+
+---
+
+**Related Documentation**:
+- [Directory Structure](/terraform/directory-structure)
+- [State Management](/terraform/state-management)
+

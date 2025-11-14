@@ -1,0 +1,248 @@
+---
+title: Architecture Blueprints
+description: Reference architecture blueprints for common deployment patterns
+---
+
+# Architecture Blueprints
+
+This document provides reference architecture blueprints for common deployment patterns in the Agentic AI infrastructure.
+
+## Blueprint 1: Minimal Development Environment
+
+A cost-optimized setup for development and testing.
+
+### Components
+
+- **VPC**: Single region, minimal subnets
+- **Compute**: 1-2 small instances or Cloud Run services
+- **Storage**: Single Cloud Storage bucket
+- **Database**: Cloud SQL with minimal configuration
+- **Networking**: Basic firewall rules
+- **Monitoring**: Basic logging only
+
+### Use Cases
+
+- Local development
+- Feature testing
+- Proof of concept
+
+### Cost Estimate
+
+- **Monthly**: ~$50-100
+- **Optimization**: Use preemptible instances, smaller machine types
+
+## Blueprint 2: Standard Production Environment
+
+A production-ready setup with high availability.
+
+### Components
+
+- **VPC**: Multi-region with redundant subnets
+- **Compute**: Managed instance groups with auto-scaling
+- **Load Balancing**: Global HTTP(S) load balancer
+- **Storage**: Multi-regional buckets with versioning
+- **Database**: Cloud SQL with read replicas and HA
+- **Networking**: Comprehensive firewall rules, Cloud Armor
+- **Security**: VPC Service Controls, Cloud KMS
+- **Monitoring**: Full monitoring, logging, and alerting
+
+### Use Cases
+
+- Production workloads
+- Customer-facing applications
+- High availability requirements
+
+### Cost Estimate
+
+- **Monthly**: ~$500-2000 (varies by usage)
+- **Scaling**: Auto-scales based on demand
+
+## Blueprint 3: Multi-Region High Availability
+
+Enterprise-grade multi-region deployment.
+
+### Components
+
+- **VPC**: Multi-region with global load balancing
+- **Compute**: Instances in 3+ regions
+- **Load Balancing**: Global load balancer with health checks
+- **Storage**: Multi-regional with cross-region replication
+- **Database**: Multi-region Cloud SQL with automatic failover
+- **Networking**: Full mesh connectivity, Cloud CDN
+- **Security**: Complete security stack
+- **Monitoring**: Comprehensive observability
+
+### Use Cases
+
+- Enterprise customers
+- Global deployments
+- Mission-critical applications
+- Disaster recovery requirements
+
+### Cost Estimate
+
+- **Monthly**: ~$2000-5000+ (varies by usage)
+- **Benefits**: Maximum availability and performance
+
+## Blueprint 4: AI Services Integration
+
+Optimized for AI workloads with 11Labs and CrewAI.
+
+### Components
+
+- **Compute**: GPU-enabled instances for AI workloads
+- **AI Services**: Vertex AI, 11Labs API integration, CrewAI hosting
+- **Storage**: High-performance storage for models and data
+- **Networking**: Low-latency networking for AI services
+- **Monitoring**: AI-specific metrics and monitoring
+- **Security**: Enhanced security for AI data
+
+### Components Detail
+
+#### 11Labs Integration
+- API gateway for 11Labs endpoints
+- Secret Manager for API keys
+- Rate limiting and quota management
+- Monitoring for API usage
+
+#### CrewAI Integration
+- Container hosting for CrewAI agents
+- Pub/Sub for agent communication
+- Firestore for agent state
+- Monitoring for agent performance
+
+#### Vertex AI
+- Model training infrastructure
+- Model serving endpoints
+- Batch prediction jobs
+- Model monitoring
+
+### Use Cases
+
+- AI-powered applications
+- Voice synthesis services
+- Multi-agent AI systems
+- Machine learning workloads
+
+## Blueprint 5: Serverless-First Architecture
+
+Leveraging serverless services for maximum efficiency.
+
+### Components
+
+- **Compute**: Cloud Run for containers, Cloud Functions for events
+- **Storage**: Cloud Storage, Firestore
+- **Networking**: Cloud Load Balancing, Cloud CDN
+- **Messaging**: Pub/Sub for event-driven architecture
+- **Security**: IAM, Secret Manager
+- **Monitoring**: Cloud Monitoring, Cloud Logging
+
+### Benefits
+
+- **Cost**: Pay only for what you use
+- **Scaling**: Automatic scaling from zero
+- **Maintenance**: Minimal operational overhead
+- **Performance**: Fast cold starts, global distribution
+
+### Use Cases
+
+- Event-driven applications
+- Microservices architecture
+- Variable workload patterns
+- Cost-optimized deployments
+
+## Blueprint Selection Guide
+
+### Choose Minimal Development if:
+- Setting up a local development environment
+- Testing new features
+- Budget is a primary concern
+- Single developer or small team
+
+### Choose Standard Production if:
+- Deploying to production
+- Need high availability
+- Moderate traffic expectations
+- Standard security requirements
+
+### Choose Multi-Region HA if:
+- Enterprise customers
+- Global user base
+- Mission-critical applications
+- Maximum availability required
+
+### Choose AI Services Integration if:
+- Building AI-powered features
+- Using 11Labs or CrewAI
+- Need GPU compute
+- ML model training/serving
+
+### Choose Serverless-First if:
+- Variable or unpredictable workloads
+- Event-driven architecture
+- Cost optimization priority
+- Minimal operational overhead desired
+
+## Migration Paths
+
+### Development → Production
+
+1. Start with Minimal Development blueprint
+2. Add monitoring and logging
+3. Implement security controls
+4. Add load balancing
+5. Enable high availability features
+
+### Production → Multi-Region
+
+1. Deploy to additional region
+2. Configure global load balancing
+3. Set up cross-region replication
+4. Implement failover procedures
+5. Test disaster recovery
+
+### Standard → AI Services
+
+1. Add GPU-enabled compute
+2. Integrate AI service APIs
+3. Configure AI-specific networking
+4. Set up model storage
+5. Implement AI monitoring
+
+## Customization
+
+All blueprints can be customized based on specific requirements:
+
+- **Compute**: Adjust instance types and sizes
+- **Storage**: Modify storage classes and regions
+- **Networking**: Customize VPC and firewall rules
+- **Security**: Add or remove security controls
+- **Monitoring**: Adjust monitoring and alerting
+
+## Implementation
+
+Each blueprint has corresponding Terraform modules:
+
+```hcl
+# Example: Standard Production
+module "production" {
+  source = "./modules/blueprints/standard-production"
+  
+  project_id = var.project_id
+  region     = var.region
+  # ... other variables
+}
+```
+
+## Next Steps
+
+- [Architecture Overview](/architecture/overview) - Detailed architecture
+- [Terraform Modules](/terraform/modules) - Implementation modules
+- [Developer Guide](/developer-guide/deployment) - Deployment instructions
+
+---
+
+**Related Documentation**:
+- [Design Principles](/architecture/design-principles)
+- [Networking](/architecture/networking)
+

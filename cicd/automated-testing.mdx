@@ -1,0 +1,46 @@
+---
+title: Automated Testing
+description: Automated testing in CI/CD pipeline
+---
+
+# Automated Testing
+
+This document describes automated testing strategies in the CI/CD pipeline.
+
+## Test Types
+
+- Unit tests
+- Integration tests
+- Validation tests
+- Security scans
+
+## Implementation
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: go test ./test/...
+      - run: terraform validate
+      - run: checkov -d terraform/
+```
+
+## Best Practices
+
+- Run tests on every commit
+- Fail fast on errors
+- Test in isolated environments
+- Automate security scanning
+
+## Next Steps
+
+- [Pipeline Configuration](/cicd/pipeline) - Pipeline setup
+- [Deployment Strategies](/cicd/deployment-strategies) - Deployment approaches
+
+---
+
+**Related Documentation**:
+- [Developer Guide Testing](/developer-guide/testing)
+

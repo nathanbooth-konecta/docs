@@ -1,0 +1,469 @@
+---
+title: Troubleshooting
+description: Common issues and troubleshooting guide
+---
+
+# Troubleshooting
+
+This document provides solutions to common issues when working with the Google Cloud infrastructure.
+
+## Authentication Issues
+
+### Error: Could not find default credentials
+
+```
+Error: google: could not find default credentials
+```
+
+**Solution**:
+```bash
+# Set up application default credentials
+gcloud auth application-default login
+
+# Or set service account key
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
+```
+
+### Error: Permission denied
+
+```
+Error: Permission denied on resource
+```
+
+**Solution**:
+```bash
+# Check current account
+gcloud auth list
+
+# Check IAM permissions
+gcloud projects get-iam-policy PROJECT_ID
+
+# Grant necessary roles
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="user:USER@example.com" \
+  --role="roles/editor"
+```
+
+## Terraform Issues
+
+### Error: Backend initialization failed
+
+```
+Error: Failed to get existing workspaces
+```
+
+**Solution**:
+```bash
+# Verify bucket exists
+gsutil ls gs://terraform-state-bucket
+
+# Check permissions
+gcloud projects get-iam-policy PROJECT_ID
+
+# Re-initialize
+terraform init -reconfigure
+```
+
+### Error: State locked
+
+```
+Error: Error acquiring the state lock
+```
+
+**Solution**:
+```bash
+# Check who has the lock
+terraform force-unlock -force LOCK_ID
+
+# Only use if you're sure no other operation is running
+```
+
+### Error: Provider version mismatch
+
+```
+Error: Provider version constraints not met
+```
+
+**Solution**:
+```bash
+# Update provider versions
+terraform init -upgrade
+
+# Or pin specific version in versions.tf
+```
+
+### Error: Resource already exists
+
+```
+Error: resource already exists
+```
+
+**Solution**:
+```bash
+# Import existing resource
+terraform import google_compute_instance.main projects/PROJECT_ID/zones/ZONE/instances/NAME
+
+# Or remove from state if not needed
+terraform state rm google_compute_instance.main
+```
+
+## Network Issues
+
+### Error: VPC not found
+
+```
+Error: VPC network not found
+```
+
+**Solution**:
+```bash
+# List VPCs
+gcloud compute networks list
+
+# Verify VPC exists
+gcloud compute networks describe VPC_NAME
+
+# Check project
+gcloud config get-value project
+```
+
+### Error: Subnet not found
+
+```
+Error: Subnet not found
+```
+
+**Solution**:
+```bash
+# List subnets
+gcloud compute networks subnets list
+
+# Verify subnet exists
+gcloud compute networks subnets describe SUBNET_NAME --region REGION
+```
+
+### Error: Firewall rule conflict
+
+```
+Error: Firewall rule already exists
+```
+
+**Solution**:
+```bash
+# List firewall rules
+gcloud compute firewall-rules list
+
+# Delete conflicting rule
+gcloud compute firewall-rules delete RULE_NAME
+```
+
+## Compute Issues
+
+### Error: Instance creation failed
+
+```
+Error: Quota exceeded
+```
+
+**Solution**:
+```bash
+# Check quotas
+gcloud compute project-info describe --project PROJECT_ID
+
+# Request quota increase
+# Go to: https://console.cloud.google.com/iam-admin/quotas
+```
+
+### Error: Image not found
+
+```
+Error: Image not found
+```
+
+**Solution**:
+```bash
+# List available images
+gcloud compute images list
+
+# Use correct image name
+# Example: debian-cloud/debian-11
+```
+
+### Error: Zone not available
+
+```
+Error: Zone not available
+```
+
+**Solution**:
+```bash
+# List available zones
+gcloud compute zones list
+
+# Use available zone
+# Example: us-central1-a
+```
+
+## Storage Issues
+
+### Error: Bucket name already taken
+
+```
+Error: Bucket name already exists
+```
+
+**Solution**:
+```bash
+# Bucket names are globally unique
+# Use a unique name with project ID
+# Example: my-bucket-PROJECT_ID
+```
+
+### Error: Access denied to bucket
+
+```
+Error: Access denied
+```
+
+**Solution**:
+```bash
+# Check bucket IAM
+gsutil iam get gs://BUCKET_NAME
+
+# Grant access
+gsutil iam ch user:USER@example.com:objectViewer gs://BUCKET_NAME
+```
+
+## Database Issues
+
+### Error: Cloud SQL connection failed
+
+```
+Error: Connection refused
+```
+
+**Solution**:
+```bash
+# Check instance status
+gcloud sql instances describe INSTANCE_NAME
+
+# Verify private IP configuration
+gcloud sql instances describe INSTANCE_NAME --format="value(ipAddresses)"
+
+# Use Cloud SQL Proxy
+./cloud-sql-proxy INSTANCE_CONNECTION_NAME
+```
+
+### Error: Database user not found
+
+```
+Error: User does not exist
+```
+
+**Solution**:
+```bash
+# List database users
+gcloud sql users list --instance INSTANCE_NAME
+
+# Create user
+gcloud sql users create USERNAME --instance INSTANCE_NAME --password PASSWORD
+```
+
+## Application Issues
+
+### Error: Cloud Run deployment failed
+
+```
+Error: Revision failed
+```
+
+**Solution**:
+```bash
+# Check logs
+gcloud run logs read SERVICE_NAME --region REGION
+
+# Check service status
+gcloud run services describe SERVICE_NAME --region REGION
+
+# Verify image exists
+gcloud container images list-tags gcr.io/PROJECT_ID/IMAGE
+```
+
+### Error: GKE pod not starting
+
+```
+Error: ImagePullBackOff
+```
+
+**Solution**:
+```bash
+# Check pod status
+kubectl describe pod POD_NAME
+
+# Check image pull secrets
+kubectl get secrets
+
+# Verify image exists
+gcloud container images list-tags gcr.io/PROJECT_ID/IMAGE
+```
+
+## Secret Manager Issues
+
+### Error: Secret not found
+
+```
+Error: Secret not found
+```
+
+**Solution**:
+```bash
+# List secrets
+gcloud secrets list
+
+# Verify secret exists
+gcloud secrets describe SECRET_NAME
+
+# Check IAM permissions
+gcloud secrets get-iam-policy SECRET_NAME
+```
+
+### Error: Permission denied to secret
+
+```
+Error: Permission denied
+```
+
+**Solution**:
+```bash
+# Grant secret accessor role
+gcloud secrets add-iam-policy-binding SECRET_NAME \
+  --member="serviceAccount:SERVICE_ACCOUNT@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+## Monitoring and Logging
+
+### View Logs
+
+```bash
+# Cloud Run logs
+gcloud run logs read SERVICE_NAME --region REGION
+
+# Compute Engine logs
+gcloud logging read "resource.type=gce_instance" --limit 50
+
+# Application logs
+gcloud logging read "resource.type=cloud_run_revision" --limit 50
+```
+
+### Check Metrics
+
+```bash
+# List metrics
+gcloud monitoring metrics list
+
+# Query metrics
+gcloud monitoring time-series list \
+  --filter='metric.type="compute.googleapis.com/instance/cpu/utilization"'
+```
+
+## Debugging Tips
+
+### Enable Debug Logging
+
+```bash
+# Terraform debug
+export TF_LOG=DEBUG
+terraform plan
+
+# gcloud debug
+gcloud --verbosity=debug compute instances list
+```
+
+### Verify Configuration
+
+```bash
+# Validate Terraform
+terraform validate
+
+# Check gcloud config
+gcloud config list
+
+# Verify project
+gcloud config get-value project
+```
+
+### Check Resource Status
+
+```bash
+# List all resources
+gcloud asset search-all-resources --project PROJECT_ID
+
+# Check specific resource
+gcloud compute instances describe INSTANCE_NAME --zone ZONE
+```
+
+## Common Solutions
+
+### Reset Terraform State
+
+```bash
+# Backup current state
+terraform state pull > backup.tfstate
+
+# Remove resource from state
+terraform state rm RESOURCE_ADDRESS
+
+# Re-import if needed
+terraform import RESOURCE_ADDRESS RESOURCE_ID
+```
+
+### Clean Up Resources
+
+```bash
+# List all resources
+terraform state list
+
+# Destroy specific resource
+terraform destroy -target=RESOURCE_ADDRESS
+
+# Destroy all
+terraform destroy
+```
+
+### Re-initialize Terraform
+
+```bash
+# Remove .terraform directory
+rm -rf .terraform
+
+# Re-initialize
+terraform init
+```
+
+## Getting Help
+
+### Documentation
+
+- [Terraform Documentation](https://www.terraform.io/docs)
+- [Google Cloud Documentation](https://cloud.google.com/docs)
+- [Terraform Google Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
+
+### Community
+
+- [Terraform Community](https://discuss.hashicorp.com/c/terraform-core)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/terraform)
+- [GitHub Issues](https://github.com/hashicorp/terraform/issues)
+
+## Next Steps
+
+- [Testing](/developer-guide/testing) - Testing guide
+- [Local Development](/developer-guide/local-development) - Local setup
+- [Deployment](/developer-guide/deployment) - Deployment guide
+
+---
+
+**Related Documentation**:
+- [Setup Guide](/developer-guide/setup)
+- [Authentication](/developer-guide/authentication)
+

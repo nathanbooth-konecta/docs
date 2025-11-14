@@ -1,0 +1,136 @@
+---
+title: Security Services
+description: IAM, KMS, Secret Manager, and security services
+---
+
+# Security Services
+
+This document describes security services: IAM, Cloud KMS, Secret Manager, and VPC Service Controls.
+
+## Identity and Access Management (IAM)
+
+### Service Accounts
+
+```hcl
+resource "google_service_account" "app" {
+  account_id   = "app-service"
+  display_name = "Application Service Account"
+}
+
+resource "google_project_iam_member" "app_permissions" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.app.email}"
+}
+```
+
+### Custom Roles
+
+```hcl
+resource "google_project_iam_custom_role" "custom_role" {
+  role_id     = "customAppRole"
+  title       = "Custom Application Role"
+  description = "Custom role for application"
+  permissions = [
+    "storage.objects.get",
+    "storage.objects.list"
+  ]
+}
+```
+
+## Cloud KMS
+
+### Key Management
+
+```hcl
+resource "google_kms_key_ring" "main" {
+  name     = "main-keyring"
+  location = var.region
+}
+
+resource "google_kms_crypto_key" "storage_key" {
+  name            = "storage-key"
+  key_ring        = google_kms_key_ring.main.id
+  rotation_period = "7776000s"  # 90 days
+
+  version_template {
+    algorithm        = "GOOGLE_SYMMETRIC_ENCRYPTION"
+    protection_level = "SOFTWARE"
+  }
+}
+
+resource "google_kms_crypto_key_iam_member" "storage_key_access" {
+  crypto_key_id = google_kms_crypto_key.storage_key.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_service_account.app.email}"
+}
+```
+
+## Secret Manager
+
+### Configuration
+
+```hcl
+resource "google_secret_manager_secret" "api_key" {
+  secret_id = "api-key"
+
+  replication {
+    automatic = true
+  }
+}
+
+resource "google_secret_manager_secret_version" "api_key" {
+  secret      = google_secret_manager_secret.api_key.id
+  secret_data = var.api_key_value
+}
+
+resource "google_secret_manager_secret_iam_member" "api_key_access" {
+  secret_id = google_secret_manager_secret.api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.app.email}"
+}
+```
+
+## VPC Service Controls
+
+### Configuration
+
+```hcl
+resource "google_access_context_manager_service_perimeter" "restricted" {
+  parent = "accessPolicies/${var.access_policy_id}"
+  name   = "accessPolicies/${var.access_policy_id}/servicePerimeters/restricted"
+
+  title = "Restricted Service Perimeter"
+
+  status {
+    resources = [
+      "projects/${var.project_number}"
+    ]
+
+    restricted_services = [
+      "storage.googleapis.com",
+      "bigquery.googleapis.com"
+    ]
+  }
+}
+```
+
+## Best Practices
+
+- Use least privilege principle
+- Enable audit logging
+- Rotate keys regularly
+- Use Secret Manager for secrets
+- Enable VPC Service Controls
+
+## Next Steps
+
+- [Security Overview](/security/overview) - Security overview
+- [IAM Configuration](/security/iam) - IAM setup
+
+---
+
+**Related Documentation**:
+- [Security Architecture](/architecture/security-architecture)
+- [Data Protection](/security/data-protection)
+

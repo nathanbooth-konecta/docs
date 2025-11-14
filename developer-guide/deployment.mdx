@@ -1,0 +1,505 @@
+---
+title: Deployment
+description: Deployment guide for infrastructure and applications
+---
+
+# Deployment
+
+This document describes how to deploy infrastructure and applications to Google Cloud Platform.
+
+## Deployment Overview
+
+### Deployment Types
+
+1. **Infrastructure Deployment**: Terraform-managed resources
+2. **Application Deployment**: Container and serverless deployments
+3. **Database Deployment**: Cloud SQL and Firestore setup
+4. **Service Deployment**: AI services integration
+
+## Infrastructure Deployment
+
+### Prerequisites
+
+```bash
+# Install Terraform
+terraform version
+
+# Authenticate
+gcloud auth application-default login
+
+# Set project
+gcloud config set project PROJECT_ID
+```
+
+### Initial Setup
+
+```bash
+# Initialize Terraform
+terraform init
+
+# Review plan
+terraform plan
+
+# Apply changes
+terraform apply
+```
+
+### Environment-Specific Deployment
+
+```bash
+# Select workspace
+terraform workspace select production
+
+# Plan with variables
+terraform plan -var-file=production.tfvars
+
+# Apply
+terraform apply -var-file=production.tfvars
+```
+
+### Staged Deployment
+
+```bash
+# 1. Deploy network
+cd terraform/environments/production/network
+terraform init
+terraform apply
+
+# 2. Deploy compute
+cd ../compute
+terraform init
+terraform apply
+
+# 3. Deploy applications
+cd ../applications
+terraform init
+terraform apply
+```
+
+## Application Deployment
+
+### Cloud Run Deployment
+
+#### Using gcloud
+
+```bash
+# Build and push image
+gcloud builds submit --tag gcr.io/PROJECT_ID/app:latest
+
+# Deploy to Cloud Run
+gcloud run deploy app \
+  --image gcr.io/PROJECT_ID/app:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
+#### Using Terraform
+
+```hcl
+resource "google_cloud_run_service" "app" {
+  name     = "app"
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = "gcr.io/${var.project_id}/app:latest"
+        
+        env {
+          name  = "DATABASE_URL"
+          value = google_sql_database_instance.main.connection_name
+        }
+      }
+      
+      service_account_name = google_service_account.app.email
+    }
+  }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
+  }
+}
+```
+
+### GKE Deployment
+
+#### Using kubectl
+
+```bash
+# Build and push image
+docker build -t gcr.io/PROJECT_ID/app:latest .
+docker push gcr.io/PROJECT_ID/app:latest
+
+# Apply Kubernetes manifests
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+#### Kubernetes Manifests
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      serviceAccountName: app-service
+      containers:
+      - name: app
+        image: gcr.io/PROJECT_ID/app:latest
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: url
+```
+
+### Compute Engine Deployment
+
+#### Using Startup Scripts
+
+```hcl
+resource "google_compute_instance" "app" {
+  name         = "app-server"
+  machine_type = "e2-standard-4"
+  zone         = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+    }
+  }
+
+  network_interface {
+    network = google_compute_network.main.name
+  }
+
+  metadata_startup_script = file("${path.module}/startup.sh")
+}
+```
+
+#### Startup Script Example
+
+```bash
+#!/bin/bash
+# startup.sh
+
+# Update system
+apt-get update
+apt-get install -y docker.io
+
+# Start application
+docker run -d \
+  -p 80:8080 \
+  -e DATABASE_URL=$DATABASE_URL \
+  gcr.io/PROJECT_ID/app:latest
+```
+
+## Database Deployment
+
+### Cloud SQL
+
+```hcl
+resource "google_sql_database_instance" "main" {
+  name             = "main-db"
+  database_version = "POSTGRES_14"
+  region           = var.region
+
+  settings {
+    tier = "db-f1-micro"
+    
+    backup_configuration {
+      enabled    = true
+      start_time = "03:00"
+    }
+    
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.main.id
+    }
+  }
+}
+
+resource "google_sql_database" "app_db" {
+  name     = "appdb"
+  instance = google_sql_database_instance.main.name
+}
+
+resource "google_sql_user" "app_user" {
+  name     = "appuser"
+  instance = google_sql_database_instance.main.name
+  password = random_password.db_password.result
+}
+```
+
+### Firestore
+
+```hcl
+resource "google_firestore_database" "main" {
+  project     = var.project_id
+  name        = "(default)"
+  location_id = var.region
+  type        = "FIRESTORE_NATIVE"
+}
+```
+
+## AI Services Deployment
+
+### 11Labs Integration
+
+```hcl
+# Store API key
+resource "google_secret_manager_secret" "elevenlabs_key" {
+  secret_id = "elevenlabs-api-key"
+}
+
+resource "google_secret_manager_secret_version" "elevenlabs_key" {
+  secret      = google_secret_manager_secret.elevenlabs_key.id
+  secret_data = var.elevenlabs_api_key
+}
+
+# Deploy API gateway
+resource "google_cloud_run_service" "elevenlabs_gateway" {
+  name     = "elevenlabs-gateway"
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = "gcr.io/${var.project_id}/elevenlabs-gateway:latest"
+      }
+    }
+  }
+}
+```
+
+### CrewAI Deployment
+
+```hcl
+# Deploy CrewAI orchestrator
+resource "google_cloud_run_service" "crewai" {
+  name     = "crewai-orchestrator"
+  location = var.region
+
+  template {
+    spec {
+      containers {
+        image = "gcr.io/${var.project_id}/crewai:latest"
+        
+        env {
+          name  = "PROJECT_ID"
+          value = var.project_id
+        }
+      }
+    }
+  }
+}
+```
+
+## Deployment Strategies
+
+### Blue-Green Deployment
+
+```hcl
+# Blue environment (current)
+resource "google_cloud_run_service" "app_blue" {
+  name     = "app-blue"
+  location = var.region
+  # ...
+}
+
+# Green environment (new)
+resource "google_cloud_run_service" "app_green" {
+  name     = "app-green"
+  location = var.region
+  # ...
+}
+
+# Load balancer with traffic splitting
+resource "google_compute_backend_service" "app" {
+  backends {
+    group = google_cloud_run_service.app_blue.id
+  }
+  backends {
+    group = google_cloud_run_service.app_green.id
+  }
+}
+```
+
+### Canary Deployment
+
+```hcl
+resource "google_cloud_run_service" "app" {
+  traffic {
+    percent         = 90
+    latest_revision = false
+    revision_name   = "app-v1"
+  }
+  
+  traffic {
+    percent         = 10
+    latest_revision = true
+  }
+}
+```
+
+### Rolling Deployment
+
+For GKE, use rolling updates:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      
+      - name: Terraform Init
+        run: terraform init
+      
+      - name: Terraform Plan
+        run: terraform plan
+      
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+```
+
+### Cloud Build
+
+```yaml
+# cloudbuild.yaml
+steps:
+  # Build application
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/app:$SHORT_SHA', '.']
+  
+  # Push image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/app:$SHORT_SHA']
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'app'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/app:$SHORT_SHA'
+      - '--region'
+      - 'us-central1'
+```
+
+## Verification
+
+### Health Checks
+
+```bash
+# Check Cloud Run service
+gcloud run services describe app --region us-central1
+
+# Check GKE pods
+kubectl get pods
+
+# Check Compute Engine instances
+gcloud compute instances list
+```
+
+### Testing Deployment
+
+```bash
+# Test API endpoint
+curl https://app-xxxxx.run.app/health
+
+# Check logs
+gcloud run logs read app --region us-central1
+```
+
+## Rollback
+
+### Terraform Rollback
+
+```bash
+# Revert to previous state
+terraform state pull > current.tfstate
+terraform state push previous.tfstate
+
+# Or use version control
+git revert HEAD
+terraform apply
+```
+
+### Application Rollback
+
+```bash
+# Cloud Run: Rollback to previous revision
+gcloud run services update-traffic app \
+  --to-revisions app-v1=100 \
+  --region us-central1
+
+# GKE: Rollback deployment
+kubectl rollout undo deployment/app
+```
+
+## Best Practices
+
+1. **Version Control**: Track all changes in Git
+2. **Staged Deployment**: Deploy in stages (network, compute, apps)
+3. **Testing**: Test in dev/staging before production
+4. **Monitoring**: Monitor deployments closely
+5. **Rollback Plan**: Have a rollback plan ready
+6. **Documentation**: Document deployment procedures
+7. **Automation**: Automate deployments via CI/CD
+8. **Backup**: Backup before major deployments
+
+## Next Steps
+
+- [Testing](/developer-guide/testing) - Testing guide
+- [Troubleshooting](/developer-guide/troubleshooting) - Troubleshooting guide
+- [CI/CD Overview](/cicd/overview) - CI/CD pipeline
+
+---
+
+**Related Documentation**:
+- [Setup Guide](/developer-guide/setup)
+- [Authentication](/developer-guide/authentication)
+

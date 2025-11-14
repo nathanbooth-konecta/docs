@@ -1,0 +1,376 @@
+---
+title: Directory Structure
+description: Detailed explanation of the Terraform directory structure
+---
+
+# Terraform Directory Structure
+
+This document explains the organization of the Terraform codebase and the purpose of each directory and file.
+
+## Root Structure
+
+```
+terraform/
+├── main.tf                 # Root module - orchestrates all resources
+├── variables.tf            # Input variable definitions
+├── outputs.tf              # Output value definitions
+├── terraform.tfvars        # Variable values (gitignored)
+├── terraform.tfvars.example # Example variable values
+├── backend.tf              # Backend configuration
+├── versions.tf             # Provider version constraints
+├── .terraformignore        # Files to ignore in Terraform operations
+│
+├── modules/                # Reusable Terraform modules
+│   ├── network/
+│   ├── compute/
+│   ├── storage/
+│   ├── security/
+│   ├── monitoring/
+│   └── ai-services/
+│
+├── environments/           # Environment-specific configurations
+│   ├── dev/
+│   ├── staging/
+│   └── production/
+│
+├── examples/               # Example configurations
+│   ├── minimal/
+│   ├── full-stack/
+│   └── multi-region/
+│
+└── scripts/                # Helper scripts
+    ├── setup-backend.sh
+    ├── validate.sh
+    └── format.sh
+```
+
+## Root Module Files
+
+### main.tf
+
+The main configuration file that orchestrates all resources and modules.
+
+```hcl
+# Provider configuration
+terraform {
+  required_version = ">= 1.5.0"
+  
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# Module calls
+module "network" {
+  source = "./modules/network"
+  # ... variables
+}
+
+module "compute" {
+  source = "./modules/compute"
+  # ... variables
+}
+```
+
+### variables.tf
+
+Defines all input variables for the root module.
+
+```hcl
+variable "project_id" {
+  description = "The GCP project ID"
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.project_id))
+    error_message = "Project ID must be a valid GCP project ID."
+  }
+}
+
+variable "region" {
+  description = "The GCP region"
+  type        = string
+  default     = "us-central1"
+}
+```
+
+### outputs.tf
+
+Exposes important values from the root module.
+
+```hcl
+output "vpc_network_id" {
+  description = "The ID of the VPC network"
+  value       = module.network.vpc_network_id
+}
+
+output "compute_instance_ips" {
+  description = "List of compute instance IP addresses"
+  value       = module.compute.instance_ips
+}
+```
+
+### backend.tf
+
+Configures the Terraform backend for state storage.
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket = "terraform-state-bucket"
+    prefix = "agentic-ai-infrastructure"
+  }
+}
+```
+
+### versions.tf
+
+Centralized provider version constraints.
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+  
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
+  }
+}
+```
+
+## Modules Directory
+
+Each module follows a consistent structure:
+
+```
+modules/
+└── network/
+    ├── main.tf           # Resource definitions
+    ├── variables.tf      # Module input variables
+    ├── outputs.tf        # Module outputs
+    ├── versions.tf       # Provider versions (if needed)
+    └── README.md         # Module documentation
+```
+
+### network/
+
+VPC networks, subnets, firewall rules, and routing.
+
+**Key Resources**:
+- `google_compute_network`
+- `google_compute_subnetwork`
+- `google_compute_firewall`
+- `google_compute_router`
+
+### compute/
+
+Compute Engine instances, instance groups, and related resources.
+
+**Key Resources**:
+- `google_compute_instance`
+- `google_compute_instance_group`
+- `google_compute_instance_template`
+
+### storage/
+
+Cloud Storage buckets, Cloud SQL instances, and other storage resources.
+
+**Key Resources**:
+- `google_storage_bucket`
+- `google_sql_database_instance`
+- `google_filestore_instance`
+
+### security/
+
+IAM roles, service accounts, and security policies.
+
+**Key Resources**:
+- `google_service_account`
+- `google_project_iam_binding`
+- `google_kms_key_ring`
+- `google_secret_manager_secret`
+
+### monitoring/
+
+Monitoring, logging, and alerting resources.
+
+**Key Resources**:
+- `google_monitoring_alert_policy`
+- `google_logging_metric`
+- `google_monitoring_dashboard`
+
+### ai-services/
+
+AI service integrations and configurations.
+
+**Key Resources**:
+- API gateway configurations
+- Service account for AI services
+- Secret Manager secrets for API keys
+
+## Environments Directory
+
+Environment-specific variable values and configurations.
+
+```
+environments/
+├── dev/
+│   ├── terraform.tfvars
+│   ├── backend.tf
+│   └── README.md
+├── staging/
+│   ├── terraform.tfvars
+│   ├── backend.tf
+│   └── README.md
+└── production/
+    ├── terraform.tfvars
+    ├── backend.tf
+    └── README.md
+```
+
+### Environment Files
+
+Each environment has:
+
+- **terraform.tfvars**: Environment-specific variable values
+- **backend.tf**: Environment-specific backend configuration
+- **README.md**: Environment-specific documentation
+
+Example `dev/terraform.tfvars`:
+
+```hcl
+project_id  = "agentic-ai-dev"
+region      = "us-central1"
+environment = "dev"
+
+# Smaller instance sizes for dev
+instance_type = "e2-small"
+min_instances = 1
+max_instances = 3
+```
+
+## Examples Directory
+
+Example configurations demonstrating different use cases.
+
+```
+examples/
+├── minimal/
+│   ├── main.tf
+│   ├── variables.tf
+│   └── README.md
+├── full-stack/
+│   └── ...
+└── multi-region/
+    └── ...
+```
+
+### minimal/
+
+Minimal configuration to get started quickly.
+
+### full-stack/
+
+Complete stack with all components.
+
+### multi-region/
+
+Multi-region deployment example.
+
+## Scripts Directory
+
+Helper scripts for common tasks.
+
+### setup-backend.sh
+
+Sets up the Terraform backend (GCS bucket, etc.).
+
+```bash
+#!/bin/bash
+# Creates GCS bucket for Terraform state
+```
+
+### validate.sh
+
+Validates Terraform configuration.
+
+```bash
+#!/bin/bash
+terraform init
+terraform validate
+terraform fmt -check
+```
+
+### format.sh
+
+Formats Terraform files.
+
+```bash
+#!/bin/bash
+terraform fmt -recursive
+```
+
+## Best Practices
+
+### Module Organization
+
+- **Single Responsibility**: Each module should have one clear purpose
+- **Reusability**: Design modules to be reusable across environments
+- **Documentation**: Include README.md in each module
+- **Versioning**: Consider module versioning for breaking changes
+
+### File Naming
+
+- Use descriptive names: `network.tf` not `net.tf`
+- Group related resources: `compute_instances.tf`, `compute_templates.tf`
+- Keep files focused: Don't put everything in `main.tf`
+
+### Variable Organization
+
+- Group related variables together
+- Use variable descriptions
+- Provide sensible defaults
+- Add validation where appropriate
+
+### Output Organization
+
+- Document all outputs
+- Group related outputs
+- Use descriptive output names
+- Expose only necessary values
+
+## Module Structure Example
+
+Here's a complete example of a well-structured module:
+
+```
+modules/network/
+├── main.tf              # VPC and subnet resources
+├── firewall.tf          # Firewall rules
+├── routes.tf            # Custom routes
+├── variables.tf         # Input variables
+├── outputs.tf           # Output values
+├── versions.tf          # Provider versions
+└── README.md            # Module documentation
+```
+
+## Next Steps
+
+- [Modules](/terraform/modules) - Detailed module documentation
+- [Variables](/terraform/variables) - Variable reference
+- [Best Practices](/terraform/best-practices) - Terraform best practices
+
+---
+
+**Related Documentation**:
+- [Terraform Overview](/terraform/overview)
+- [Developer Guide](/developer-guide/setup)
+

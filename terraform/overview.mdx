@@ -1,0 +1,241 @@
+---
+title: Terraform Overview
+description: Overview of the Terraform infrastructure as code implementation
+---
+
+# Terraform Overview
+
+This document provides an overview of how Terraform is used to manage the Google Cloud infrastructure for Agentic AI solutions.
+
+## What is Terraform?
+
+Terraform is an Infrastructure as Code (IaC) tool that allows you to define, provision, and manage cloud infrastructure using declarative configuration files. With Terraform, you can:
+
+- **Version Control**: Track infrastructure changes in Git
+- **Reproducibility**: Create identical environments consistently
+- **Collaboration**: Multiple team members can work on infrastructure
+- **Automation**: Integrate with CI/CD pipelines
+- **State Management**: Track resource state and dependencies
+
+## Why Terraform?
+
+We chose Terraform for this project because:
+
+- **Multi-Cloud Ready**: Works with GCP, AWS, Azure, and more
+- **Declarative Syntax**: Describe desired state, not steps
+- **Rich Ecosystem**: Extensive provider and module ecosystem
+- **State Management**: Built-in state tracking and locking
+- **Plan Before Apply**: Preview changes before execution
+- **Community Support**: Large, active community
+
+## Terraform Structure
+
+Our Terraform codebase is organized into a modular structure:
+
+```
+terraform/
+├── main.tf                 # Root module configuration
+├── variables.tf            # Input variables
+├── outputs.tf              # Output values
+├── terraform.tfvars        # Variable values (not in Git)
+├── backend.tf              # Backend configuration
+│
+├── modules/                # Reusable modules
+│   ├── network/           # VPC and networking
+│   ├── compute/           # Compute resources
+│   ├── storage/           # Storage resources
+│   ├── security/          # Security and IAM
+│   ├── monitoring/        # Monitoring and logging
+│   └── ai-services/       # AI service integrations
+│
+├── environments/           # Environment-specific configs
+│   ├── dev/
+│   ├── staging/
+│   └── production/
+│
+└── examples/              # Example configurations
+```
+
+## Key Concepts
+
+### Modules
+
+Modules are reusable Terraform configurations that encapsulate related resources. We use modules to:
+
+- **Reduce Duplication**: Write once, use many times
+- **Standardize**: Consistent resource configurations
+- **Simplify**: Hide complexity behind simple interfaces
+- **Maintain**: Update in one place, apply everywhere
+
+Example module usage:
+
+```hcl
+module "network" {
+  source = "./modules/network"
+  
+  project_id = var.project_id
+  region     = var.region
+  vpc_name   = "agentic-ai-vpc"
+}
+```
+
+### Variables
+
+Variables allow you to parameterize your Terraform configurations:
+
+```hcl
+variable "project_id" {
+  description = "The GCP project ID"
+  type        = string
+}
+
+variable "region" {
+  description = "The GCP region"
+  type        = string
+  default     = "us-central1"
+}
+```
+
+### Outputs
+
+Outputs expose important values from your Terraform configuration:
+
+```hcl
+output "vpc_network_id" {
+  description = "The ID of the VPC network"
+  value       = google_compute_network.main.id
+}
+
+output "subnet_ids" {
+  description = "List of subnet IDs"
+  value       = [for s in google_compute_subnetwork.subnets : s.id]
+}
+```
+
+### State
+
+Terraform state tracks the mapping between your configuration and real-world resources. We use:
+
+- **Remote State**: Stored in Cloud Storage
+- **State Locking**: Prevents concurrent modifications
+- **State Backend**: Cloud Storage bucket with versioning
+
+## Provider Configuration
+
+The Google Cloud provider is configured in the root module:
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+  
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+  
+  backend "gcs" {
+    bucket = "terraform-state-bucket"
+    prefix = "agentic-ai-infrastructure"
+  }
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+```
+
+## Workflow
+
+### 1. Initialize
+
+```bash
+terraform init
+```
+
+Downloads providers and modules, initializes the backend.
+
+### 2. Plan
+
+```bash
+terraform plan
+```
+
+Shows what changes will be made without applying them.
+
+### 3. Apply
+
+```bash
+terraform apply
+```
+
+Creates or updates infrastructure to match the configuration.
+
+### 4. Destroy (when needed)
+
+```bash
+terraform destroy
+```
+
+Removes all resources managed by Terraform.
+
+## Best Practices
+
+We follow these Terraform best practices:
+
+1. **Modular Design**: Use modules for reusable components
+2. **Version Pinning**: Pin provider and module versions
+3. **Remote State**: Store state remotely with locking
+4. **Variable Validation**: Validate inputs with constraints
+5. **Output Documentation**: Document all outputs
+6. **Code Review**: Review all Terraform changes
+7. **Testing**: Test infrastructure changes before production
+8. **Documentation**: Document complex configurations
+
+## Environment Management
+
+We use separate Terraform workspaces or directories for different environments:
+
+- **Development**: Fast iteration, cost-optimized
+- **Staging**: Production-like for testing
+- **Production**: Full security and compliance
+
+Each environment has its own:
+- Variable values (`terraform.tfvars`)
+- State file
+- Backend configuration
+
+## Integration with CI/CD
+
+Terraform integrates with our CI/CD pipeline:
+
+1. **Pull Request**: Plan runs on PR creation
+2. **Review**: Team reviews planned changes
+3. **Merge**: Changes merged to main branch
+4. **Deploy**: Apply runs in appropriate environment
+5. **Verify**: Post-deployment verification
+
+## Security Considerations
+
+- **Secrets Management**: Use Secret Manager, not variables
+- **IAM**: Service accounts with minimal permissions
+- **State Security**: Encrypted state storage
+- **Access Control**: Limit who can modify infrastructure
+- **Audit Logging**: Track all Terraform operations
+
+## Next Steps
+
+- [Directory Structure](/terraform/directory-structure) - Detailed structure explanation
+- [Modules](/terraform/modules) - Available modules and usage
+- [Variables](/terraform/variables) - Variable reference
+- [State Management](/terraform/state-management) - State configuration
+- [Best Practices](/terraform/best-practices) - Detailed best practices
+
+---
+
+**Related Documentation**:
+- [Developer Guide](/developer-guide/setup)
+- [Architecture Overview](/architecture/overview)
+

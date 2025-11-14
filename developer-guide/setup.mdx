@@ -1,0 +1,366 @@
+---
+title: Setup
+description: Step-by-step guide to set up your development environment
+---
+
+# Development Environment Setup
+
+This guide walks you through setting up your local development environment for working with the Google Cloud infrastructure codebase.
+
+## Step 1: Clone the Repository
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/gcp-iac-repo.git
+cd gcp-iac-repo
+
+# Verify the structure
+ls -la
+```
+
+## Step 2: Install Dependencies
+
+Ensure you have all required tools installed (see [Prerequisites](/developer-guide/prerequisites)):
+
+```bash
+# Verify Terraform
+terraform version
+
+# Verify gcloud
+gcloud version
+
+# Verify Git
+git --version
+```
+
+## Step 3: Configure Google Cloud Authentication
+
+### Option A: User Credentials (Development)
+
+```bash
+# Login with your user account
+gcloud auth login
+
+# Set application default credentials
+gcloud auth application-default login
+
+# Set your project
+gcloud config set project YOUR_PROJECT_ID
+```
+
+### Option B: Service Account (CI/CD)
+
+```bash
+# Create a service account key (if needed)
+gcloud iam service-accounts keys create key.json \
+  --iam-account terraform@PROJECT_ID.iam.gserviceaccount.com
+
+# Set the environment variable
+export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/key.json"
+```
+
+## Step 4: Enable Required APIs
+
+Enable the necessary Google Cloud APIs:
+
+```bash
+# Navigate to the scripts directory
+cd scripts
+
+# Run the API enablement script (if available)
+./enable-apis.sh
+
+# Or enable manually
+gcloud services enable \
+  compute.googleapis.com \
+  storage.googleapis.com \
+  iam.googleapis.com \
+  cloudresourcemanager.googleapis.com \
+  servicenetworking.googleapis.com \
+  secretmanager.googleapis.com \
+  logging.googleapis.com \
+  monitoring.googleapis.com
+```
+
+## Step 5: Set Up Terraform Backend
+
+The Terraform backend stores state in Google Cloud Storage.
+
+### Create Backend Bucket
+
+```bash
+# Set variables
+PROJECT_ID="your-project-id"
+BUCKET_NAME="terraform-state-${PROJECT_ID}"
+
+# Create the bucket
+gsutil mb -p ${PROJECT_ID} -l us-central1 gs://${BUCKET_NAME}
+
+# Enable versioning
+gsutil versioning set on gs://${BUCKET_NAME}
+
+# Enable object versioning
+gsutil lifecycle set lifecycle.json gs://${BUCKET_NAME}
+```
+
+Create `lifecycle.json`:
+
+```json
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {"type": "Delete"},
+        "condition": {
+          "numNewerVersions": 10
+        }
+      }
+    ]
+  }
+}
+```
+
+### Configure Backend
+
+Update `backend.tf` or create environment-specific backend:
+
+```hcl
+terraform {
+  backend "gcs" {
+    bucket = "terraform-state-your-project-id"
+    prefix = "agentic-ai-infrastructure/dev"
+  }
+}
+```
+
+## Step 6: Configure Terraform Variables
+
+### Copy Example Variables
+
+```bash
+# Copy the example file
+cp terraform.tfvars.example terraform.tfvars
+
+# Or for environment-specific
+cp environments/dev/terraform.tfvars.example environments/dev/terraform.tfvars
+```
+
+### Edit Variables
+
+Edit `terraform.tfvars` with your values:
+
+```hcl
+project_id  = "your-project-id"
+region      = "us-central1"
+zone        = "us-central1-a"
+environment = "dev"
+
+# Network configuration
+vpc_name    = "agentic-ai-vpc"
+subnet_name = "agentic-ai-subnet"
+
+# Compute configuration
+instance_type = "e2-small"
+min_instances = 1
+max_instances = 3
+```
+
+## Step 7: Initialize Terraform
+
+```bash
+# Navigate to terraform directory
+cd terraform
+
+# Initialize Terraform
+terraform init
+
+# Verify initialization
+terraform version
+```
+
+Expected output:
+
+```
+Initializing the backend...
+Initializing provider plugins...
+- Finding hashicorp/google versions matching "~> 5.0"...
+- Installing hashicorp/google v5.0.0...
+Terraform has been successfully initialized!
+```
+
+## Step 8: Validate Configuration
+
+```bash
+# Validate syntax
+terraform validate
+
+# Format code
+terraform fmt -recursive
+
+# Check for issues
+terraform plan
+```
+
+## Step 9: Set Up Pre-commit Hooks (Optional)
+
+Install pre-commit hooks for automatic formatting and validation:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Test hooks
+pre-commit run --all-files
+```
+
+## Step 10: Configure Your IDE
+
+### VS Code
+
+Install extensions:
+
+```bash
+# Install HashiCorp Terraform extension
+code --install-extension hashicorp.terraform
+
+# Install Google Cloud Code extension
+code --install-extension GoogleCloudTools.cloudcode
+```
+
+Configure settings in `.vscode/settings.json`:
+
+```json
+{
+  "terraform.format.enable": true,
+  "terraform.languageServer.enable": true,
+  "files.associations": {
+    "*.tf": "terraform",
+    "*.tfvars": "terraform"
+  }
+}
+```
+
+### IntelliJ IDEA
+
+1. Install the HashiCorp Terraform plugin
+2. Configure Terraform executable path
+3. Enable auto-formatting on save
+
+## Step 11: Verify Setup
+
+Run a test to verify everything is working:
+
+```bash
+# Test Terraform plan (dry run)
+terraform plan
+
+# Should show what would be created without errors
+```
+
+## Step 12: Set Up Environment Variables (Optional)
+
+Create a `.env` file for environment variables:
+
+```bash
+# .env file
+export GOOGLE_CLOUD_PROJECT="your-project-id"
+export TF_VAR_project_id="your-project-id"
+export TF_LOG=INFO  # For debugging
+```
+
+Source it in your shell:
+
+```bash
+source .env
+```
+
+## Directory Structure After Setup
+
+Your workspace should look like:
+
+```
+gcp-iac-repo/
+├── .git/
+├── .terraform/              # Created by terraform init
+├── terraform.tfstate        # Local state (if not using remote)
+├── terraform.tfvars         # Your variable values
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── modules/
+├── docs/
+└── scripts/
+```
+
+## Troubleshooting
+
+### Backend Initialization Fails
+
+```bash
+# Verify bucket exists
+gsutil ls gs://terraform-state-bucket
+
+# Check permissions
+gcloud projects get-iam-policy PROJECT_ID
+
+# Try re-initializing
+terraform init -reconfigure
+```
+
+### Authentication Errors
+
+```bash
+# Re-authenticate
+gcloud auth application-default login
+
+# Verify credentials
+gcloud auth list
+
+# Check service account (if using)
+gcloud iam service-accounts list
+```
+
+### Provider Version Issues
+
+```bash
+# Update provider versions in versions.tf
+# Then re-initialize
+terraform init -upgrade
+```
+
+### State Lock Issues
+
+If state is locked (another operation in progress):
+
+```bash
+# Check for locks
+terraform force-unlock LOCK_ID
+
+# Only use if you're sure no other operation is running
+```
+
+## Next Steps
+
+Now that your environment is set up:
+
+1. [Authentication](/developer-guide/authentication) - Learn about authentication options
+2. [Deployment](/developer-guide/deployment) - Deploy your first infrastructure
+3. [Local Development](/developer-guide/local-development) - Set up local development workflows
+
+## Additional Resources
+
+- [Terraform Documentation](https://www.terraform.io/docs)
+- [Google Cloud Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
+- [Terraform Best Practices](/terraform/best-practices)
+
+---
+
+**Related Documentation**:
+- [Prerequisites](/developer-guide/prerequisites)
+- [Authentication](/developer-guide/authentication)
+- [Quickstart](/quickstart)
+

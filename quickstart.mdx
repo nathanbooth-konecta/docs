@@ -1,80 +1,214 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started quickly with deploying the Google Cloud infrastructure
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
+This guide will help you get started with deploying the Google Cloud infrastructure for Agentic AI solutions in under 30 minutes.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+Before you begin, ensure you have:
 
-### Step 2: Deploy your changes
+- [ ] Google Cloud Platform account with billing enabled
+- [ ] Terraform >= 1.5.0 installed
+- [ ] Google Cloud SDK (gcloud) installed and configured
+- [ ] Appropriate IAM permissions (see [Prerequisites](/developer-guide/prerequisites))
+- [ ] Git installed
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Step 1: Clone the Repository
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+```bash
+git clone https://github.com/your-org/gcp-iac-repo.git
+cd gcp-iac-repo
+```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+## Step 2: Authenticate with Google Cloud
 
-### Step 3: Go live
+```bash
+# Login to Google Cloud
+gcloud auth login
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+# Set your project
+gcloud config set project YOUR_PROJECT_ID
 
-## Next steps
+# Enable required APIs
+gcloud services enable compute.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable iam.googleapis.com
+gcloud services enable cloudresourcemanager.googleapis.com
+```
 
-Now that you have your docs running, explore these key features:
+## Step 3: Configure Terraform Variables
 
-<CardGroup cols={2}>
+Create a `terraform.tfvars` file in the root directory:
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+```hcl
+project_id     = "your-gcp-project-id"
+region         = "us-central1"
+zone           = "us-central1-a"
+environment    = "dev"
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+# Optional: Customize these values
+network_name   = "agentic-ai-network"
+subnet_name    = "agentic-ai-subnet"
+```
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+## Step 4: Initialize Terraform
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+```bash
+cd terraform
+terraform init
+```
 
-</CardGroup>
+This will download the required Terraform providers and modules.
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Step 5: Review the Deployment Plan
+
+```bash
+terraform plan
+```
+
+Review the resources that will be created. This is a dry-run that shows what Terraform will do without making any changes.
+
+## Step 6: Deploy the Infrastructure
+
+```bash
+terraform apply
+```
+
+Type `yes` when prompted to confirm the deployment. This will create:
+
+- VPC network and subnets
+- Firewall rules
+- Compute instances (if configured)
+- Storage buckets
+- IAM roles and service accounts
+- Basic monitoring and logging
+
+## Step 7: Verify Deployment
+
+After deployment completes, verify the infrastructure:
+
+```bash
+# List created resources
+gcloud compute networks list
+gcloud compute instances list
+gcloud storage buckets list
+
+# Check Terraform outputs
+terraform output
+```
+
+## Step 8: Access Your Infrastructure
+
+Once deployed, you can:
+
+1. **SSH into instances** (if created):
+   ```bash
+   gcloud compute ssh INSTANCE_NAME --zone=ZONE
+   ```
+
+2. **View logs**:
+   ```bash
+   gcloud logging read "resource.type=gce_instance" --limit 50
+   ```
+
+3. **Check monitoring**:
+   - Visit [Cloud Console](https://console.cloud.google.com)
+   - Navigate to Monitoring > Dashboards
+
+## Common Next Steps
+
+### Deploy Application Services
+
+After the foundation is deployed, you can deploy application-specific services:
+
+```bash
+cd terraform/modules/app-services
+terraform init
+terraform apply
+```
+
+### Configure CI/CD
+
+Set up continuous deployment:
+
+```bash
+cd .github/workflows
+# Review and customize GitHub Actions workflows
+```
+
+### Set Up Monitoring
+
+Configure custom dashboards and alerts:
+
+```bash
+cd terraform/modules/monitoring
+terraform apply
+```
+
+## Troubleshooting
+
+### Authentication Errors
+
+If you encounter authentication errors:
+
+```bash
+# Re-authenticate
+gcloud auth application-default login
+
+# Verify credentials
+gcloud auth list
+```
+
+### Permission Errors
+
+Ensure your account has the required IAM roles:
+
+```bash
+# Check your roles
+gcloud projects get-iam-policy YOUR_PROJECT_ID --flatten="bindings[].members" --filter="bindings.members:user:YOUR_EMAIL"
+```
+
+### Terraform State Issues
+
+If you encounter state lock issues:
+
+```bash
+# Force unlock (use with caution)
+terraform force-unlock LOCK_ID
+```
+
+## Clean Up (Development Only)
+
+To remove all created resources:
+
+```bash
+terraform destroy
+```
+
+**Warning**: This will delete all infrastructure. Only use this in development environments.
+
+## What's Next?
+
+Now that you have the basic infrastructure deployed:
+
+1. **Review the Architecture**: Understand the system design in [Architecture Overview](/architecture/overview)
+2. **Customize Configuration**: Learn about [Terraform Variables](/terraform/variables)
+3. **Deploy Services**: Follow the [Developer Guide](/developer-guide/deployment)
+4. **Set Up Security**: Review [Security Documentation](/security/overview)
+
+## Getting Help
+
+- **Documentation**: Browse the full documentation
+- **Issues**: Check existing issues or create a new one
+- **Support**: Contact the platform team
+
+---
+
+**Estimated Time**: 20-30 minutes  
+**Difficulty**: Beginner  
+**Next Steps**: [Architecture Overview](/architecture/overview) | [Developer Guide](/developer-guide/prerequisites)
+

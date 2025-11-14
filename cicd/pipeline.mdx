@@ -1,0 +1,65 @@
+---
+title: CI/CD Pipeline
+description: Pipeline configuration and setup
+---
+
+# CI/CD Pipeline
+
+This document describes the CI/CD pipeline configuration for infrastructure and applications.
+
+## GitHub Actions
+
+```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v2
+      - run: terraform validate
+      - run: terraform fmt -check
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v2
+      - run: terraform apply -auto-approve
+```
+
+## Cloud Build
+
+```yaml
+steps:
+  - name: 'hashicorp/terraform:1.5.0'
+    args: ['validate']
+  - name: 'hashicorp/terraform:1.5.0'
+    args: ['apply', '-auto-approve']
+```
+
+## Best Practices
+
+- Validate before deploy
+- Use environment-specific configs
+- Implement approval gates
+- Monitor deployments
+
+## Next Steps
+
+- [Automated Testing](/cicd/automated-testing) - Testing setup
+- [Deployment Strategies](/cicd/deployment-strategies) - Deployment approaches
+
+---
+
+**Related Documentation**:
+- [Developer Guide](/developer-guide/deployment)
+

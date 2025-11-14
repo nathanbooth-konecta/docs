@@ -1,0 +1,60 @@
+---
+title: Data Protection
+description: Data encryption and protection strategies
+---
+
+# Data Protection
+
+This document describes data protection strategies including encryption, access controls, and data classification.
+
+## Encryption at Rest
+
+### Cloud Storage
+
+```hcl
+resource "google_storage_bucket" "secure" {
+  name = "secure-bucket"
+
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+}
+```
+
+### Cloud SQL
+
+```hcl
+resource "google_sql_database_instance" "main" {
+  encryption_key_name = google_kms_crypto_key.sql_key.id
+}
+```
+
+## Encryption in Transit
+
+- Use TLS 1.2+ for all connections
+- Use managed SSL certificates
+- Enable mTLS where possible
+
+## Access Controls
+
+- Implement IAM policies
+- Use VPC Service Controls
+- Enable audit logging
+
+## Best Practices
+
+- Encrypt all sensitive data
+- Use KMS for key management
+- Rotate keys regularly
+- Monitor data access
+
+## Next Steps
+
+- [Security Overview](/security/overview) - Security overview
+- [Compliance](/security/compliance) - Compliance requirements
+
+---
+
+**Related Documentation**:
+- [Security Architecture](/architecture/security-architecture)
+

@@ -1,0 +1,320 @@
+---
+title: Testing
+description: Testing guide for infrastructure and applications
+---
+
+# Testing
+
+This document describes testing strategies and practices for infrastructure and applications.
+
+## Testing Overview
+
+### Testing Types
+
+1. **Unit Tests**: Test individual modules and resources
+2. **Integration Tests**: Test module composition
+3. **Validation Tests**: Syntax and configuration validation
+4. **Compliance Tests**: Security and policy compliance
+5. **End-to-End Tests**: Full infrastructure deployment
+
+## Terraform Testing
+
+### Validation
+
+```bash
+# Validate syntax
+terraform validate
+
+# Format check
+terraform fmt -check -recursive
+
+# Validate with variables
+terraform validate -var-file=test.tfvars
+```
+
+### Planning
+
+```bash
+# Plan without applying
+terraform plan -out=tfplan
+
+# Plan with specific targets
+terraform plan -target=module.network
+
+# Plan with detailed output
+terraform plan -detailed-exitcode
+```
+
+### Testing Modules
+
+```bash
+# Test module in isolation
+cd modules/network
+terraform init
+terraform plan
+```
+
+## Terratest
+
+### Installation
+
+```bash
+go get github.com/gruntwork-io/terratest/modules/terraform
+go get github.com/stretchr/testify/assert
+```
+
+### Example Test
+
+```go
+package test
+
+import (
+    "testing"
+    "github.com/gruntwork-io/terratest/modules/terraform"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestNetworkModule(t *testing.T) {
+    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+        TerraformDir: "../modules/network",
+        Vars: map[string]interface{}{
+            "project_id": "test-project",
+            "region":     "us-central1",
+        },
+    })
+
+    defer terraform.Destroy(t, terraformOptions)
+    terraform.InitAndApply(t, terraformOptions)
+
+    vpcId := terraform.Output(t, terraformOptions, "vpc_network_id")
+    assert.NotEmpty(t, vpcId)
+}
+```
+
+## Infrastructure Testing
+
+### Network Tests
+
+```bash
+# Test connectivity
+gcloud compute instances describe INSTANCE_NAME --zone ZONE
+
+# Test firewall rules
+gcloud compute firewall-rules list
+
+# Test VPC connectivity
+gcloud compute networks describe VPC_NAME
+```
+
+### Compute Tests
+
+```bash
+# Test instance creation
+gcloud compute instances create test-instance \
+  --zone us-central1-a \
+  --machine-type e2-small
+
+# Test instance connectivity
+gcloud compute ssh test-instance --zone us-central1-a
+
+# Cleanup
+gcloud compute instances delete test-instance --zone us-central1-a
+```
+
+### Storage Tests
+
+```bash
+# Test bucket creation
+gsutil mb gs://test-bucket
+
+# Test object upload
+echo "test" | gsutil cp - gs://test-bucket/test.txt
+
+# Test object download
+gsutil cp gs://test-bucket/test.txt .
+
+# Cleanup
+gsutil rm -r gs://test-bucket
+```
+
+## Application Testing
+
+### Unit Tests
+
+```python
+# test_app.py
+import unittest
+from app import get_secret
+
+class TestApp(unittest.TestCase):
+    def test_get_secret(self):
+        # Mock secret manager
+        secret = get_secret("test-project", "test-secret")
+        self.assertIsNotNone(secret)
+```
+
+### Integration Tests
+
+```python
+# test_integration.py
+import requests
+
+def test_api_endpoint():
+    response = requests.get("https://app.run.app/health")
+    assert response.status_code == 200
+```
+
+### End-to-End Tests
+
+```python
+# test_e2e.py
+def test_complete_workflow():
+    # 1. Create resource
+    # 2. Verify creation
+    # 3. Test functionality
+    # 4. Cleanup
+    pass
+```
+
+## Security Testing
+
+### Policy Testing
+
+Use Open Policy Agent (OPA) for policy testing:
+
+```rego
+# policies/terraform.rego
+package terraform
+
+deny[msg] {
+    resource := input.resource_changes[_]
+    resource.type == "google_compute_instance"
+    not resource.change.after.labels.environment
+    msg := "Instance must have environment label"
+}
+```
+
+### Security Scanning
+
+```bash
+# Checkov - Infrastructure security scanning
+checkov -d terraform/
+
+# TFLint - Terraform linter
+tflint terraform/
+
+# Terrascan - Security scanner
+terrascan scan -t terraform
+```
+
+## Performance Testing
+
+### Load Testing
+
+```bash
+# Apache Bench
+ab -n 1000 -c 10 https://app.run.app/
+
+# Locust
+locust -f locustfile.py --host=https://app.run.app
+```
+
+### Stress Testing
+
+```python
+# stress_test.py
+import concurrent.futures
+import requests
+
+def make_request():
+    return requests.get("https://app.run.app/")
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+    futures = [executor.submit(make_request) for _ in range(1000)]
+    results = [f.result() for f in futures]
+```
+
+## CI/CD Testing
+
+### GitHub Actions
+
+```yaml
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+      
+      - name: Terraform Validate
+        run: terraform validate
+      
+      - name: Terraform Format Check
+        run: terraform fmt -check
+      
+      - name: Run Tests
+        run: go test ./test/...
+```
+
+### Cloud Build
+
+```yaml
+# cloudbuild-test.yaml
+steps:
+  - name: 'hashicorp/terraform:1.5.0'
+    args: ['validate']
+  
+  - name: 'hashicorp/terraform:1.5.0'
+    args: ['fmt', '-check']
+  
+  - name: 'gcr.io/cloud-builders/go'
+    args: ['test', './test/...']
+```
+
+## Test Environments
+
+### Development Environment
+
+```bash
+# Deploy to dev
+terraform workspace select dev
+terraform apply -var-file=dev.tfvars
+```
+
+### Staging Environment
+
+```bash
+# Deploy to staging
+terraform workspace select staging
+terraform apply -var-file=staging.tfvars
+```
+
+## Best Practices
+
+1. **Test Early**: Test during development
+2. **Automate**: Automate all tests
+3. **Isolate**: Test modules in isolation
+4. **Cleanup**: Always cleanup test resources
+5. **Document**: Document test procedures
+6. **Coverage**: Aim for good test coverage
+7. **Fast Tests**: Keep tests fast
+8. **Reliable**: Make tests reliable and repeatable
+
+## Next Steps
+
+- [Deployment](/developer-guide/deployment) - Deployment guide
+- [Troubleshooting](/developer-guide/troubleshooting) - Troubleshooting guide
+- [CI/CD Testing](/cicd/automated-testing) - CI/CD testing
+
+---
+
+**Related Documentation**:
+- [Local Development](/developer-guide/local-development)
+- [Best Practices](/terraform/best-practices)
+

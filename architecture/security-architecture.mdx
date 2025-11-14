@@ -1,0 +1,533 @@
+---
+title: Security Architecture
+description: Comprehensive security architecture and design
+---
+
+# Security Architecture
+
+This document describes the security architecture for the Google Cloud infrastructure supporting Agentic AI solutions.
+
+## Security Model
+
+### Defense in Depth
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Perimeter Security                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  Cloud Armor │  │  WAF Rules   │  │  DDoS        │     │
+│  │  (Edge)      │  │  (Layer 7)   │  │  Protection  │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Network Security                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  VPC         │  │  Firewall    │  │  VPC Service │     │
+│  │  Isolation   │  │  Rules       │  │  Controls    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Identity & Access                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  Cloud IAM   │  │  Service     │  │  Workload    │     │
+│  │  (RBAC)      │  │  Accounts    │  │  Identity    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Data Security                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  Encryption  │  │  Key         │  │  Data        │     │
+│  │  (At Rest)   │  │  Management  │  │  Classification│   │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Application Security                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  Secret      │  │  API         │  │  Code        │     │
+│  │  Management  │  │  Security    │  │  Scanning    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Monitoring & Response                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │  Audit       │  │  Security    │  │  Incident    │     │
+│  │  Logging     │  │  Monitoring  │  │  Response    │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Identity and Access Management (IAM)
+
+### Service Accounts
+
+#### Application Service Accounts
+
+```hcl
+resource "google_service_account" "app_service" {
+  account_id   = "app-service"
+  display_name = "Application Service Account"
+  description  = "Service account for application workloads"
+}
+
+resource "google_project_iam_member" "app_service_permissions" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.app_service.email}"
+}
+```
+
+#### Principle of Least Privilege
+
+- **Custom Roles**: Create roles with minimal permissions
+- **Resource-Level IAM**: Grant permissions at resource level
+- **Conditional Access**: Use IAM conditions for context-aware access
+
+### Workload Identity
+
+For GKE workloads:
+
+```hcl
+resource "google_service_account_iam_member" "workload_identity" {
+  service_account_id = google_service_account.app_service.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[default/app-service]"
+}
+```
+
+### Organization Policies
+
+```hcl
+resource "google_org_policy_policy" "require_os_login" {
+  name   = "projects/${var.project_id}/policies/compute.requireOsLogin"
+  parent = "projects/${var.project_id}"
+
+  spec {
+    rules {
+      enforce = "TRUE"
+    }
+  }
+}
+```
+
+## Network Security
+
+### VPC Firewall Rules
+
+#### Default Deny
+
+```hcl
+resource "google_compute_firewall" "deny_all_ingress" {
+  name    = "deny-all-ingress"
+  network = google_compute_network.main.name
+
+  deny {
+    protocol = "all"
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  priority      = 65534
+}
+```
+
+#### Explicit Allow Rules
+
+- Use tags for resource grouping
+- Use service accounts for identity-based rules
+- Restrict source IP ranges
+- Log all firewall rule matches
+
+### VPC Service Controls
+
+```hcl
+resource "google_access_context_manager_service_perimeter" "restricted" {
+  parent = "accessPolicies/${var.access_policy_id}"
+  name   = "accessPolicies/${var.access_policy_id}/servicePerimeters/restricted"
+
+  title = "Restricted Service Perimeter"
+
+  status {
+    resources = [
+      "projects/${var.project_number}"
+    ]
+
+    restricted_services = [
+      "storage.googleapis.com",
+      "bigquery.googleapis.com"
+    ]
+
+    vpc_accessible_services {
+      enable_restriction = true
+      allowed_services   = ["storage.googleapis.com"]
+    }
+
+    ingress_policies {
+      ingress_from {
+        sources {
+          access_level = google_access_context_manager_access_level.trusted.name
+        }
+      }
+      ingress_to {
+        resources = ["*"]
+        operations {
+          service_name = "storage.googleapis.com"
+          method_selectors {
+            method = "google.storage.objects.get"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Private Google Access
+
+Enable for all subnets to prevent data exfiltration:
+
+```hcl
+resource "google_compute_subnetwork" "compute" {
+  name          = "compute-subnet"
+  ip_cidr_range = "10.0.1.0/24"
+  region        = var.region
+  network       = google_compute_network.main.id
+
+  private_ip_google_access = true
+}
+```
+
+## Data Security
+
+### Encryption at Rest
+
+#### Cloud Storage
+
+```hcl
+resource "google_storage_bucket" "secure_bucket" {
+  name          = "secure-bucket"
+  location      = var.region
+  force_destroy = false
+
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+```
+
+#### Cloud SQL
+
+```hcl
+resource "google_sql_database_instance" "main" {
+  name             = "main-db"
+  database_version = "POSTGRES_14"
+  region           = var.region
+
+  settings {
+    tier = "db-f1-micro"
+
+    backup_configuration {
+      enabled    = true
+      start_time = "03:00"
+    }
+
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.main.id
+    }
+
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
+  }
+
+  encryption_key_name = google_kms_crypto_key.sql_key.id
+  deletion_protection = true
+}
+```
+
+### Encryption in Transit
+
+- **TLS 1.2+**: Enforce for all connections
+- **SSL Certificates**: Use managed certificates
+- **Internal Traffic**: Use mTLS where possible
+
+### Key Management
+
+#### Cloud KMS
+
+```hcl
+resource "google_kms_key_ring" "main" {
+  name     = "main-keyring"
+  location = var.region
+}
+
+resource "google_kms_crypto_key" "storage_key" {
+  name            = "storage-key"
+  key_ring        = google_kms_key_ring.main.id
+  rotation_period = "7776000s"  # 90 days
+
+  version_template {
+    algorithm        = "GOOGLE_SYMMETRIC_ENCRYPTION"
+    protection_level = "SOFTWARE"
+  }
+}
+
+resource "google_kms_crypto_key_iam_member" "storage_key_access" {
+  crypto_key_id = google_kms_crypto_key.storage_key.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${google_service_account.app_service.email}"
+}
+```
+
+## Secret Management
+
+### Secret Manager
+
+```hcl
+resource "google_secret_manager_secret" "api_key" {
+  secret_id = "api-key"
+
+  replication {
+    automatic = true
+  }
+
+  labels = {
+    environment = "production"
+    managed_by  = "terraform"
+  }
+}
+
+resource "google_secret_manager_secret_version" "api_key" {
+  secret      = google_secret_manager_secret.api_key.id
+  secret_data = var.api_key_value
+}
+
+resource "google_secret_manager_secret_iam_member" "api_key_access" {
+  secret_id = google_secret_manager_secret.api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.app_service.email}"
+}
+```
+
+### Secret Rotation
+
+- **Automated Rotation**: Use Cloud Functions for rotation
+- **Version Management**: Access specific versions
+- **Audit Logging**: Track all secret access
+
+## Application Security
+
+### API Security
+
+#### API Gateway
+
+```hcl
+resource "google_api_gateway_api" "api" {
+  provider     = google-beta
+  api_id       = "api"
+  display_name = "API Gateway"
+}
+
+resource "google_api_gateway_api_config" "api_config" {
+  provider      = google-beta
+  api           = google_api_gateway_api.api.api_id
+  api_config_id = "config"
+
+  gateway_config {
+    backend_config {
+      google_service_account = google_service_account.api_gateway.email
+    }
+  }
+
+  openapi_documents {
+    document {
+      path     = "spec.yaml"
+      contents = base64encode(file("${path.module}/spec.yaml"))
+    }
+  }
+}
+```
+
+### Container Security
+
+#### Container Image Scanning
+
+- **Container Analysis API**: Scan images for vulnerabilities
+- **Binary Authorization**: Enforce image policies
+- **Base Image Security**: Use minimal base images
+
+#### GKE Security
+
+```hcl
+resource "google_container_cluster" "secure_cluster" {
+  name     = "secure-cluster"
+  location = var.region
+
+  # Enable Workload Identity
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+
+  # Enable Binary Authorization
+  binary_authorization {
+    evaluation_mode = "PROJECT_SINGLETON_POLICY_ENFORCE"
+  }
+
+  # Enable Network Policy
+  network_policy {
+    enabled = true
+  }
+
+  # Enable Pod Security Policy
+  pod_security_policy_config {
+    enabled = true
+  }
+
+  # Enable Shielded Nodes
+  enable_shielded_nodes = true
+
+  # Enable Confidential Nodes
+  confidential_nodes {
+    enabled = true
+  }
+}
+```
+
+## Monitoring and Logging
+
+### Audit Logging
+
+```hcl
+resource "google_project_iam_audit_config" "audit_config" {
+  project = var.project_id
+
+  service = "allServices"
+
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
+}
+```
+
+### Security Monitoring
+
+#### Security Command Center
+
+- **Asset Discovery**: Continuous asset inventory
+- **Threat Detection**: Identify security threats
+- **Vulnerability Scanning**: Scan for vulnerabilities
+- **Event Threat Detection**: Detect security events
+
+#### Cloud Monitoring Alerts
+
+```hcl
+resource "google_monitoring_alert_policy" "unauthorized_access" {
+  display_name = "Unauthorized Access Attempt"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "IAM Policy Denial"
+
+    condition_threshold {
+      filter          = "resource.type=\"project\" AND metric.type=\"iam.googleapis.com/policy/denials\""
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 10
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+}
+```
+
+## Compliance
+
+### Data Residency
+
+- **Regional Storage**: Store data in specific regions
+- **Organization Policies**: Enforce data location
+- **Compliance Checks**: Regular compliance audits
+
+### Access Controls
+
+- **MFA**: Require multi-factor authentication
+- **Session Management**: Enforce session timeouts
+- **Access Reviews**: Regular access reviews
+
+## Incident Response
+
+### Security Incident Playbook
+
+1. **Detection**: Identify security incidents
+2. **Containment**: Isolate affected systems
+3. **Investigation**: Analyze the incident
+4. **Remediation**: Fix vulnerabilities
+5. **Recovery**: Restore services
+6. **Post-Incident**: Review and improve
+
+### Automated Response
+
+- **Cloud Functions**: Automated response triggers
+- **Event-Driven**: React to security events
+- **Integration**: Integrate with SIEM systems
+
+## Best Practices
+
+1. **Least Privilege**: Grant minimum necessary permissions
+2. **Defense in Depth**: Multiple security layers
+3. **Encryption**: Encrypt data at rest and in transit
+4. **Monitoring**: Continuous security monitoring
+5. **Audit Logging**: Log all security-relevant events
+6. **Regular Updates**: Keep systems updated
+7. **Security Reviews**: Regular security assessments
+8. **Incident Response**: Prepared incident response plan
+
+## Next Steps
+
+- [Security Overview](/security/overview) - Security overview
+- [IAM](/security/iam) - Identity and access management
+- [Data Protection](/security/data-protection) - Data security
+- [Compliance](/security/compliance) - Compliance requirements
+
+---
+
+**Related Documentation**:
+- [Architecture Overview](/architecture/overview)
+- [Networking](/architecture/networking)
+

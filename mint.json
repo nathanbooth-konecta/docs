@@ -1,16 +1,15 @@
 {
   "$schema": "https://mintlify.com/schema.json",
   "name": "Google Cloud Infrastructure for Agentic AI",
-  "theme": "willow",
   "logo": {
     "dark": "/logo/Konecta_Logo_RGB_White.png",
     "light": "/logo/Konecta_Logo_RGB_Blue.png"
   },
   "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#01378C",              // Konecta Blue
-    "light": "#E5F2FB",                // Light Blue background
-    "dark": "#00254F",                 // Very dark blue (from main nav/footer)
+    "primary": "#01378C",
+    "light": "#E5F2FB",
+    "dark": "#00254F",
     "anchors": {
       "from": "#01378C",
       "to": "#38B6FF"

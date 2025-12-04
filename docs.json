@@ -108,8 +108,8 @@
         "pages": [
           "crewai/install",
           "crewai/post-install",
-          "reference/faq",
-          "reference/changelog"
+          "crewai/faq",
+          "crewai/changelog"
         ]
       }
     ]

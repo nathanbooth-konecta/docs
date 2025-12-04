@@ -21,7 +21,7 @@ Container_Boundary(hub, "Hub VPC Network Multi-Region") {
     Component(monitor, "Monitoring / Observability", "Cloud Monitoring / Logging", "Centralized Logging / Alerting")
     Component(firewall, "Firewall Rules", "VPC Flow Logs", "Ingress / Egress Control")
 
-    // Regional Groups
+  %% Regional Groups
     Container_Boundary(reg1, "Region 1 Primary") {
         Component(lb_reg1, "Regional Load Balancer", "Internal Load Balancer", "Distributes within Region")
         Component(gke_reg1, "GKE / Compute Engine", "Backend Compute", "Primary Application Instances")
@@ -54,11 +54,11 @@ Container_Boundary(ai_svc, "AI Services Integration External / Internal") {
     Rel(spoke1, elevenlabs, "Calls External Service", "Egress via Hub")
 }
 
-// Hub-Spoke Peering
+%% Hub-Spoke Peering
 Rel(reg1, spoke1, "VPC Peering / Interconnect", "Private Access")
 Rel(reg2, spoke1, "VPC Peering / Interconnect", "Private Access")
 
-// User Ingress
+%% User Ingress
 Person(user, "Internet / Users", "External Traffic Source")
 Rel(user, lb_global, "Sends HTTPS Request", "Internet")
 ```

@@ -51,8 +51,8 @@ gcloud auth application-default login
 aws sso login --profile default_core_irlanda
 ````
 
-\</Step\>
-\<Step title="Validate Code Quality"\>
+</Step>
+<Step title="Validate Code Quality">
 Run the `make validate` command, which automatically executes `terraform fmt`, `terraform validate`, and `tflint`.
 
 ```bash
@@ -62,8 +62,8 @@ make validate
 
 > **Tools Used**: This single command ensures **consistent style**, **valid syntax**, and adherence to **DevOps best practices**.
 
-\</Step\>
-\<Step title="Initialize and Plan Deployment"\>
+</Step>
+<Step title="Initialize and Plan Deployment">
 Initialize Terraform and generate an execution plan to preview all infrastructure changes.
 
 ```bash
@@ -72,8 +72,8 @@ make init
 make plan
 ```
 
-\</Step\>
-\<Step title="Deploy Infrastructure"\>
+</Step>
+<Step title="Deploy Infrastructure">
 Apply the plan to provision all 70+ resources in your GCP project. This process takes approximately 20 minutes.
 
 ```bash
@@ -81,8 +81,8 @@ Apply the plan to provision all 70+ resources in your GCP project. This process 
 make apply
 ```
 
-\</Step\>
-\</Steps\>
+</Step>
+</Steps>
 
 **That's it\!** 🎉 The `Makefile` automates all DevOps best practices, ensuring a robust deployment.
 
@@ -122,8 +122,8 @@ The infrastructure is **Secure by Default** with a focus on least privilege and 
 
 Ensure you have the following installed on your local machine:
 
-  * **Terraform** (\>= 1.0.0)
-  * **TFLint** (\>= 0.60.0)
+  * **Terraform** (>= 1.0.0)
+  * **TFLint** (>= 0.60.0)
   * **Make**
   * **gcloud CLI**
   * **AWS CLI**

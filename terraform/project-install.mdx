@@ -33,7 +33,6 @@ This blueprint deploys over **70 resources** across two main categories:
 | **Artifact Registry** | Private Docker Repository | Container Image Storage |
 | **Kubernetes Resources** | Cluster Configuration | Namespaces, Secrets |
 
----
 
 ## 🚀 Quick Start (For Developers)
 
@@ -87,7 +86,6 @@ make apply
 
 **That's it\!** 🎉 The `Makefile` automates all DevOps best practices, ensuring a robust deployment.
 
------
 
 ## 🛠️ DevOps Tools and Automation
 
@@ -107,8 +105,6 @@ The blueprint uses the `Makefile` to simplify common DevOps tasks.
 | `make clean` | 🧹 Cleanup | Removes temporary Terraform files. |
 | `make destroy` | 💣 Teardown | **Removes all deployed infrastructure (use with caution\!).** |
 
------
-
 ## 🔒 Security Highlights
 
 The infrastructure is **Secure by Default** with a focus on least privilege and private networking.
@@ -119,8 +115,6 @@ The infrastructure is **Secure by Default** with a focus on least privilege and 
   * 🔒 **Encryption at Rest** - Applied to GCS, Cloud SQL, and GKE disks
   * 🔒 **Secret Manager** - Database credentials stored securely
   * 🔒 **Least-Privilege IAM** - Minimal permissions granted to all Service Accounts
-
------
 
 ## ⚙️ Prerequisites and Configuration
 
@@ -159,9 +153,6 @@ gcp_region      = "us-central1"
 # Budget
 budget = "500"  # EUR per month
 ```
-
------
-
 ## 📁 Module Structure
 
 The project is structured into logical modules to manage complexity:
@@ -185,8 +176,6 @@ Project_Creation_Blueprint/
         └── secrets/          # Secret Manager
 ```
 
------
-
 ## 💰 Estimated Monthly Cost
 
 The estimated monthly cost for this production-ready environment is **€300-800/month**, depending on the usage and scaling of GKE.
@@ -197,8 +186,6 @@ The estimated monthly cost for this production-ready environment is **€300-800
 | Cloud SQL (HA + Replica) | €150-250 |
 | Storage & Networking | €30-75 |
 | **Total Budget Configured** | **€500/month** (adjustable) |
-
------
 
 ## 🗑️ Cleanup
 

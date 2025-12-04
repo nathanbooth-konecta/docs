@@ -103,6 +103,15 @@
           "reference/api-reference"
         ]
       }
+      {
+        "group": "CrewaI",
+        "pages": [
+          "crewai/install",
+          "crewai/post-install",
+          "reference/faq",
+          "reference/changelog"
+        ]
+      }
     ]
   },
   "logo": {

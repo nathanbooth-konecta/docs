@@ -16,54 +16,100 @@ The following analysis proceeds through the layers of the architecture: Governan
 
 ## Architecture Diagram
 
-```
-                                                ┌──────────────────────────────────────────────────────────┐
-                                                │                      Internet / Users                    │
-                                                └────────────────────────────┬─────────────────────────────┘
-                                                                             │
-                                                                             ▼
-                                                ┌──────────────────────────────────────────────────────────┐
-                                                │                    Cloud Load Balancer                   │
-                                                │              (Global / Regional Load Balancing)          │
-                                                └────────────────────────────┬─────────────────────────────┘
-                                                                             │
-                                                                  ┌──────────┼────────┐
-                                                                  │                   │
-                                                                  ▼                   ▼
-                                                           ┌──────────────┐    ┌──────────────┐
-                                                           │   Region 1   │    │   Region 2   │
-                                                           │  (Primary)   │    │  (Secondary) │
-                                                           └──────┬───────┘    └──────┬───────┘
-                                                                  │                   │               
-                                                                  ▼                   ▼               
-                   ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-                   │                                            Hub VPC Core (Multi-Region)                                        │
-                   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │ 
-                   │  │     IAP      │  │    Cloud     │  │    Hybrid    │  │  Monitoring  │  │   Firewall   │  │     Load     │   │ 
-                   │  │    Policy    │  │    Armor     │  │ connectivity │  │/Observability│  │     Rules    │  │  Balancing   │   │    
-                   │  └──────┬───────┘  └───────┬──────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘   │ 
-                   └─────────┼──────────────────┼────────────────┼─────────────────┼─────────────────┼─────────────────┼───────────┘
-                             └───────────────┬──┴────────────────┴─────────────────┴─────────────────┴────┬────────────┘
-                                             │                                                            │
-                                             ▼                                                            ▼
-┌───────────────────────────────────────────────────────────────────────────┐  ┌───────────────────────────────────────────────────────────────────────────┐
-│                          Spoke 1                                          │  │                          Spoke x                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │  Cloud SQL   │  │  GKE/Compute │  │  Cloud Run   │  │    Cloud     │   │  │  │  Cloud SQL   │  │  GKE/Compute │  │  Cloud Run   │  │    Cloud     │   │
-│  │ (Database)   │  │    Engine    │  │     etc      │  │    Storage   │   │  │  │ (Database)   │  │    Engine    │  │     etc      │  │    Storage   │   │
-│  └──────┬───────┘  └───────┬──────┘  └──────┬───────┘  └──────────────┘   │  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────────────┘   │
-└─────────┼──────────────────┼────────────────┼─────────────────────────────┘  └─────────┼─────────────────┼─────────────────┼─────────────────────────────┘
-          └──────────────────┴────────────────┴───────────────────────────────┬──────────┴─────────────────┴─────────────────┘
-                                                                              │
-                                                                              ▼
-                                                ┌──────────────────────────────────────────────────────────────┐
-                                                │                    AI Services Integration                   │
-                                                │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
-                                                │  │    11Labs    │  │   Vertex AI  │  │     Other    │        │
-                                                │  │  (Voice AI)  │  │ (ML Platform)│  │   Services   │        │
-                                                │  └──────────────┘  └──────────────┘  └──────────────┘        │
-                                                └──────────────────────────────────────────────────────────────┘
-   
+```mermaid
+graph TD
+    %% Section 1: Internet to Load Balancer
+    A[Internet / Users] --> B[Cloud Load Balancer<br>Global / Regional Load Balancing];
+
+    %% Section 2: Load Balancer to Regions
+    B --> C[Region 1 - Primary];
+    B --> D[Region 2 - Secondary];
+
+    %% Section 3: Regions to Hub VPC Core
+    subgraph Hub VPC Core - Multi-Region
+        direction LR
+        IAP[IAP Policy]
+        CA[Cloud Armor]
+        HC[Hybrid connectivity]
+        MO[Monitoring/Observability]
+        FR[Firewall Rules]
+        LB_Hub[Load Balancing]
+    end
+    
+    C --> H_Join;
+    D --> H_Join;
+    
+    H_Join(( )) --- IAP;
+    H_Join --- CA;
+    H_Join --- HC;
+    H_Join --- MO;
+    H_Join --- FR;
+    H_Join --- LB_Hub;
+
+    style H_Join fill:#f9f,stroke:#333,stroke-width:2px,shape:circle
+    
+    %% Section 4: Hub to Spokes
+    IAP --> Spoke1;
+    CA --> Spoke1;
+    HC --> Spoke1;
+    MO --> Spoke1;
+    FR --> Spoke1;
+    LB_Hub --> Spoke1;
+    IAP --> Spokex;
+    CA --> Spokex;
+    HC --> Spokex;
+    MO --> Spokex;
+    FR --> Spokex;
+    LB_Hub --> Spokex;
+
+    
+    %% Section 5: Spoke details
+    subgraph Spoke 1
+        direction LR
+        S1_CS[Cloud SQL<br> Database]
+        S1_GKE[GKE/Compute<br>Engine]
+        S1_CR[Cloud Run<br>etc]
+        S1_Sto[Cloud<br>Storage]
+    end
+    
+    subgraph Spoke x
+        direction LR
+        Sx_CS[Cloud SQL<br> Database ]
+        Sx_GKE[GKE/Compute<br>Engine]
+        Sx_CR[Cloud Run<br>etc]
+        Sx_Sto[Cloud<br>Storage]
+    end
+    
+    %% Connections within Spokes (for layout purposes)
+    Spoke1 --- S1_CS & S1_GKE & S1_CR & S1_Sto;
+    Spokex --- Sx_CS & Sx_GKE & Sx_CR & Sx_Sto;
+
+
+    %% Section 6: Spoke Connections to AI Services
+    S1_CS --> AIS_Join;
+    S1_GKE --> AIS_Join;
+    S1_CR --> AIS_Join;
+    Sx_CS --> AIS_Join;
+    Sx_GKE --> AIS_Join;
+    Sx_CR --> AIS_Join;
+    
+    subgraph AI Services Integration
+        direction LR
+        AIS_11[11Labs<br> Voice AI]
+        AIS_VX[Vertex AI<br> ML Platform]
+        AIS_Other[Other<br>Services]
+    end
+    
+    AIS_Join(( )) --- AIS_11;
+    AIS_Join --- AIS_VX;
+    AIS_Join --- AIS_Other;
+    
+    style AIS_Join fill:#f9f,stroke:#333,stroke-width:2px,shape:circle
+    
+    
+    %% Define the invisible hub nodes and set styles
+    H_Join[ ]
+    AIS_Join[ ]
 ```
 
 ## Core Components

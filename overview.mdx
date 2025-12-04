@@ -10,7 +10,7 @@ The rapid evolution of generative AI agents necessitates a robust, scalable, and
 
 The Konecta Cloud Adoption Program outlines a transformative initiative to modernize IT operations, emphasizing operational efficiency, security, resilience, and innovation. The deployment of CrewAI,  framework for orchestrating role-playing AI agents-directly supports the goal of leveraging Google Cloud's capabilities in data analytics and AI to support business goals. However, the dynamic and often unpredictable nature of autonomous agents introduces specific challenges regarding network egress, identity management, and state persistence that must be reconciled with Konecta's rigid governance standards.
 
-This architecture is founded on the Standard Global Landing Zone principles defined by Konecta. It leverages a Hub-and-Spoke network topology to ensure isolation, * TBC! Keycloak for centralized identity federation, and a Zero-Trust security model enforced via Google Cloud’s Identity-Aware Proxy (IAP). By mapping the CrewAI components to Konecta’s standardized naming conventions, resource hierarchy, and infrastructure-as-code (IaC) mandates, this report provides a comprehensive blueprint for implementation
+This architecture is founded on the Standard Global Landing Zone principles defined by Konecta. It leverages a Hub-and-Spoke network topology to ensure isolation, ** TBC! Keycloak for centralized identity federation **, and a Zero-Trust security model enforced via Google Cloud’s Identity-Aware Proxy (IAP). By mapping the CrewAI components to Konecta’s standardized naming conventions, resource hierarchy, and infrastructure-as-code (IaC) mandates, this report provides a comprehensive blueprint for implementation
 
 The following analysis proceeds through the layers of the architecture: Governance, Networking, Compute, Security, and Operations. Each section dissects the specific Konecta principles involved, identifies the technical implementation details for CrewAI, and provides deep strategic insights into the implications of these design choices.
 
@@ -71,49 +71,49 @@ The following analysis proceeds through the layers of the architecture: Governan
 ### 1. 🌐 Global Ingress and Edge Security
 These components handle traffic entry, global routing, and initial security enforcement at the network edge.
 
-*Cloud Load Balancer (Global HTTP(S) LB): Provides Anycast IP, Global Edge Termination, SSL/TLS termination, and Default Proximity Routing to the nearest healthy region.
-*Cloud Armor: Provides DDoS & WAF Protection with Edge Enforcement and Adaptive Protection.
-*Firewall Rules (Ingress): Controls allowed incoming traffic at the edge and hub boundaries.
+* Cloud Load Balancer (Global HTTP(S) LB): Provides Anycast IP, Global Edge Termination, SSL/TLS termination, and Default Proximity Routing to the nearest healthy region.
+* Cloud Armor: Provides DDoS & WAF Protection with Edge Enforcement and Adaptive Protection.
+* Firewall Rules (Ingress): Controls allowed incoming traffic at the edge and hub boundaries.
 
 ### 2. 🛡️ Hub VPC Core (Central Networking & Control)
 This multi-region hub acts as the control plane for networking, security, and shared services.
 
-*Virtual Private Cloud (VPC): The foundational Multi-region VPC network enabling global connectivity and Private Google Access.
-*Identity-Aware Proxy (IAP) Policy: Enforces Zero Trust Enforcement and IAM Authorization for access control.
-*Firewall Rules (Egress): Controls allowed outbound connections from the network to external services.
-*Hybrid connectivity: Manages connections to on-premises or external infrastructure.
-*Load Balancing (Internal): Regional load balancers for internal service traffic within the Hub or between Spokes.
+* Virtual Private Cloud (VPC): The foundational Multi-region VPC network enabling global connectivity and Private Google Access.
+* Identity-Aware Proxy (IAP) Policy: Enforces Zero Trust Enforcement and IAM Authorization for access control.
+* Firewall Rules (Egress): Controls allowed outbound connections from the network to external services.
+* Hybrid connectivity: Manages connections to on-premises or external infrastructure.
+* Load Balancing (Internal): Regional load balancers for internal service traffic within the Hub or between Spokes.
 
 ### 3. 🖥️ Regional Compute Layer (Spokes)
 These are the regional application environments where the core workload resides, deployed across a primary and secondary region.
 
-*Regional Deployment: Utilizes Region 1 (Primary) and Region 2 (Secondary) for high availability and disaster recovery.
-*Google Kubernetes Engine (GKE): Managed Kubernetes clusters for containerized application deployment.
-*Compute Engine: IaaS utilizing Managed Instance Groups (for auto-scaling) and Shielded VMs (for security).
-*Cloud Run: Serverless container platform offering Auto-scaling from zero and a Pay-per-use model.
+* Regional Deployment: Utilizes Region 1 (Primary) and Region 2 (Secondary) for high availability and disaster recovery.
+* Google Kubernetes Engine (GKE): Managed Kubernetes clusters for containerized application deployment.
+* Compute Engine: IaaS utilizing Managed Instance Groups (for auto-scaling) and Shielded VMs (for security).
+* Cloud Run: Serverless container platform offering Auto-scaling from zero and a Pay-per-use model.
 
 ### 4. 🗄️ Data and Storage Layer (Spokes)
 Components dedicated to managing persistent and highly available data storage for the applications.
 
-*Cloud SQL: Managed relational database service (PostgreSQL/MySQL) with High Availability and automated recovery.
-*Cloud Storage: Multi-regional buckets for highly available object storage, supporting Lifecycle policies and Versioning.
+* Cloud SQL: Managed relational database service (PostgreSQL/MySQL) with High Availability and automated recovery.
+* Cloud Storage: Multi-regional buckets for highly available object storage, supporting Lifecycle policies and Versioning.
 
 ### 5. 🤖 AI Services Integration
 Specific components for integrating specialized external and internal AI/ML capabilities.
 
-*Vertex AI (ML Platform): Manages end-to-end machine learning lifecycle, including Model training and serving.
-*11Labs Integration (Voice AI): Secure API gateway for integrating external AI services.
-*Other Services: Placeholder for future specialized integrations.
+* Vertex AI (ML Platform): Manages end-to-end machine learning lifecycle, including Model training and serving.
+* 11Labs Integration (Voice AI): Secure API gateway for integrating external AI services.
+* Other Services: Placeholder for future specialized integrations.
 
 ### 6. 🔒 Operations and Governance (Cross-Cutting)
 Central services providing monitoring, logging, and security governance across the entire architecture.
 
-*VPC Service Controls: Establishes Perimeter security for APIs to prevent data exfiltration.
-*Identity and Access Management (IAM): Manages Service accounts and enforces Custom roles.
-*Cloud KMS*: Manages encryption keys, covering Encryption key management and Key rotation policies.
-*Cloud Monitoring: Provides visibility via Custom dashboards and Alerting policies for SLOs.
-*Cloud Logging: Offers Centralized log aggregation and log-based metrics.
-*Cloud Trace: Provides Distributed tracing for performance and latency analysis.
+* VPC Service Controls: Establishes Perimeter security for APIs to prevent data exfiltration.
+* Identity and Access Management (IAM): Manages Service accounts and enforces Custom roles.
+* Cloud KMS*: Manages encryption keys, covering Encryption key management and Key rotation policies.
+* Cloud Monitoring: Provides visibility via Custom dashboards and Alerting policies for SLOs.
+* Cloud Logging: Offers Centralized log aggregation and log-based metrics.
+* Cloud Trace: Provides Distributed tracing for performance and latency analysis.
 
 ## Data Flow
 

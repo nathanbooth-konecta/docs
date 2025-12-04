@@ -5,227 +5,134 @@ description: Core design principles guiding the infrastructure architecture
 
 # Design Principles
 
-This document outlines the core design principles that guide the architecture and implementation of the Google Cloud infrastructure for Agentic AI solutions.
+This document outlines the core design principles that guide the architecture and implementation of the Google Cloud infrastructure for Agentic AI solutions, incorporating Konecta's global enterprise architecture blueprint.
 
-## 1. Security First
+---
 
-Security is not an afterthought—it's built into every layer of the infrastructure.
+## 1. Security First 🔒
 
-### Principles
-
-- **Zero Trust**: Never trust, always verify
-- **Least Privilege**: Grant minimum necessary permissions
-- **Defense in Depth**: Multiple layers of security controls
-- **Encryption Everywhere**: Encrypt data at rest and in transit
-
-### Implementation
-
-- IAM roles with minimal required permissions
-- VPC Service Controls for API security
-- Cloud KMS for key management
-- Regular security audits and compliance checks
-- Network segmentation and firewall rules
-
-## 2. Scalability
-
-The infrastructure must scale seamlessly with demand.
+Security is not an afterthought—it's built into every layer of the infrastructure. This aligns with Konecta's zero-trust model.
 
 ### Principles
 
-- **Horizontal Scaling**: Scale out, not up
-- **Auto-Scaling**: Automatic resource adjustment
-- **Stateless Design**: Enable easy scaling
-- **Elastic Resources**: Pay for what you use
+- **Zero Trust**: Never trust, always verify, enforced via **Chrome Enterprise Premium (CEP)**, **Security Gateway (SG)**, and **Identity-Aware Proxy (IAP)**.
+- **Least Privilege**: Grant minimum necessary permissions through **Role-Based Access Control (RBAC)** assigned to groups, not individual users.
+- **Defense in Depth**: Multiple layers of security controls, including WAF rules via **Cloud Armor** and granular firewall policies.
+- **Encryption Everywhere**: Encrypt data at rest and in transit.
 
 ### Implementation
 
-- Managed instance groups with auto-scaling
-- Cloud Run automatic scaling
-- Load balancing across multiple instances
-- Database read replicas for read scaling
-- Pub/Sub for decoupled, scalable messaging
+- IAM roles with minimal required permissions.
+- VPC Service Controls for API security.
+- Cloud KMS for key management.
+- **Mandatory MFA** policies enforced by **Keycloak**.
+- **VMs are not allowed public IP addresses**.
 
-## 3. Reliability & High Availability
+---
 
-The system must be available when customers need it.
+## 2. Global Governance & Standardization 🗺️
+
+Implement a unified, secure, and scalable foundation across all regions.
 
 ### Principles
 
-- **Redundancy**: No single points of failure
-- **Multi-Region**: Geographic distribution
-- **Automated Failover**: Minimal manual intervention
-- **Graceful Degradation**: Partial functionality during failures
+- **Standardized Landing Zone [K01]**: Implement a single, scalable, and secure architecture as a starting point for all countries/regions.
+- **Shared Global Governance [K02]**: Deploy within a **single Google Cloud organization** with shared responsibility between global corporate and regional country teams.
+- **Hierarchical Structure [RM02]**: Utilize the folder hierarchy (**Organization > Environments > Regions > Countries**) to enforce global organizational policies, IAM, and firewall policies.
+- **Standard Naming Convention [RM04]**: Define and enforce a standardized naming convention via IaC for clarity and consistency.
 
 ### Implementation
 
-- Multi-region deployment
-- Database replication and failover
-- Health checks and automatic recovery
-- Backup and disaster recovery procedures
-- Service-level objectives (SLOs) and error budgets
+- Global teams manage the initial landing zone and global policies (access, security, networking, billing).
+- Regional teams deploy and manage their applications following global policies.
+- Segregation of **PROD**, **STG**, **DEV**, and **LGC** environments using different folders.
 
-## 4. Observability
+---
 
-You can't manage what you can't measure.
+## 3. Reliability & Business Continuity  uptime
+
+The system must be available and resilient to failure (HA and DR).
 
 ### Principles
 
-- **Comprehensive Logging**: Log everything important
-- **Metrics Everywhere**: Measure all critical operations
-- **Distributed Tracing**: Understand request flows
-- **Proactive Alerting**: Know about issues before customers
+- **High Availability (HA) [K06.1]**: Achieved through **multi-zonal deployments** and regional zonal replication.
+- **Disaster Recovery (DR) [K06.2]**: Achieved through **multi-regional deployments**, backups, and cross-region replication for critical systems.
+- **Redundancy**: No single points of failure.
+- **Fault-Tolerant Networking**: Networks will be designed for fault-tolerant, scalable configurations.
 
 ### Implementation
 
-- Cloud Logging for centralized logs
-- Cloud Monitoring for metrics and dashboards
-- Cloud Trace for distributed tracing
-- Custom dashboards for key metrics
-- Alerting policies for critical issues
+- All critical production applications must use appropriate business continuity configurations (HA, DR, backups).
+- Cloud Router with dynamic routing (BGP) for hybrid connectivity.
 
-## 5. Cost Optimization
+---
 
-Maximize value while minimizing costs.
+## 4. Networking & Regional Isolation 🌐
+
+Implement a centralized, isolated, and secure network topology.
 
 ### Principles
 
-- **Right-Sizing**: Match resources to actual needs
-- **Pay for Use**: Leverage serverless where possible
-- **Reserved Capacity**: Commit for predictable workloads
-- **Continuous Optimization**: Regular cost reviews
+- **Hub & Spoke Architecture [K03]**: Networks in each country/region will follow a hub & spoke architecture. The **hub** is the central point for shared services and external connectivity; **spokes** are for individual application deployments.
+- **Network Regional Isolation [K04]**: Each country/region will have its own hub and spoke, with **no network connectivity between regional networks**.
+- **Shared VPCs**: Spokes will be implemented using Shared VPCs for centralized network connectivity (host project) and app deployment (service projects).
+- **Private Connectivity**: VPC peering between spokes is to be avoided; **Private Service Connect** is preferred for inter-spoke communication.
 
 ### Implementation
 
-- Preemptible instances for non-critical workloads
-- Committed use discounts for steady-state resources
-- Automated resource scheduling
-- Cost monitoring and alerting
-- Regular cost optimization reviews
+- Hybrid connectivity (Partner Interconnect/HA VPN) routes through the central hub.
+- **Cloud DNS** is used for centralized DNS management in the hub VPC, using DNS forwarding to on-premises networks and DNS peering to spokes.
+- Egress to the internet is disabled by default for spokes; enabled via **Cloud NAT** if needed.
 
-## 6. Infrastructure as Code
+---
 
-All infrastructure is defined in code.
+## 5. Workload Migration & Innovation 🚀
+
+Focus on modernization and leveraging cloud-native capabilities.
 
 ### Principles
 
-- **Version Control**: All infrastructure in Git
-- **Reproducibility**: Same code, same result
-- **Review Process**: Code review for all changes
-- **Documentation**: Code is self-documenting
+- **Cloud Native First [K07.1]**: Migrate applications to **serverless and managed services** wherever possible to improve agility and performance.
+- **Modern Workplace**: Implement solutions like **Google Workspace** and **Chrome OS Flex** to enhance collaboration and productivity.
+- **Innovation**: Leverage Google Cloud’s capabilities in data analytics, machine learning, and AI.
 
 ### Implementation
 
-- Terraform for infrastructure definition
-- Modular, reusable Terraform modules
-- Git-based version control
-- Pull request reviews for changes
-- Automated testing of infrastructure code
+- Applications requiring VMware compatibility will initially use **Google Cloud VMware Engine (GCVE)**.
+- Lift-and-shift applications will be deployed on a dedicated **Legacy (LGC) environment**.
 
-## 7. Automation
+---
 
-Automate repetitive tasks and reduce manual errors.
+## 6. Infrastructure as Code & DevOps ⚙️
+
+Automate deployment and configuration to ensure reproducibility and reliability.
 
 ### Principles
 
-- **CI/CD**: Automated testing and deployment
-- **Self-Service**: Developers can deploy safely
-- **Automated Remediation**: Fix common issues automatically
-- **Infrastructure Automation**: Provision and update automatically
+- **Infrastructure as Code (IaC) [K08.1]**: All infrastructure will be deployed using **Terraform**, structured as modular and repeatable configurations.
+- **CI/CD [K08.2]**: All application code and content will be built, tested, and deployed using Continuous Integration/Continuous Deployment tools.
+- **No Manual Deployment**: No production applications will be deployed or configured manually by humans.
+- **Centralized Monitoring [K08.3]**: **Cloud Operations Suite** will be the default platform for centralized monitoring and management.
 
 ### Implementation
 
-- Cloud Build for CI/CD pipelines
-- Terraform for infrastructure automation
-- Automated testing in pipelines
-- Self-service deployment workflows
-- Automated backup and recovery
+- Automated deployments via IaC and CI/CD pipelines.
+- **Cloud Audit Logs** for auditing all administrative actions and group membership changes.
 
-## 8. Compliance & Governance
-
-Meet regulatory and organizational requirements.
-
-### Principles
-
-- **Policy as Code**: Enforce policies automatically
-- **Audit Trails**: Complete audit logging
-- **Data Residency**: Control where data lives
-- **Compliance Standards**: Meet industry requirements
-
-### Implementation
-
-- Organization policies for compliance
-- Cloud Audit Logs for all actions
-- Data location controls
-- Regular compliance audits
-- Documentation of compliance measures
-
-## 9. Developer Experience
-
-Make it easy for developers to be productive.
-
-### Principles
-
-- **Self-Service**: Developers can provision resources
-- **Clear Documentation**: Easy to understand and follow
-- **Fast Feedback**: Quick iteration cycles
-- **Local Development**: Work locally when possible
-
-### Implementation
-
-- Terraform modules for common patterns
-- Comprehensive documentation
-- Quickstart guides and examples
-- Local development environments
-- Clear error messages and troubleshooting guides
-
-## 10. Continuous Improvement
-
-The infrastructure evolves based on learnings.
-
-### Principles
-
-- **Post-Mortems**: Learn from incidents
-- **Regular Reviews**: Assess and improve
-- **Technology Updates**: Stay current with best practices
-- **Feedback Loops**: Incorporate user feedback
-
-### Implementation
-
-- Incident post-mortem process
-- Regular architecture reviews
-- Technology upgrade procedures
-- Feedback collection and incorporation
+---
 
 ## Trade-offs
 
 Every design decision involves trade-offs. We prioritize:
 
-1. **Security** over convenience
-2. **Reliability** over cost (within reason)
-3. **Scalability** over simplicity (when necessary)
-4. **Automation** over manual processes
-5. **Observability** over performance (minimal impact)
+1. **Security** over convenience.
+2. **Reliability** over cost (within reason).
+3. **Regional Isolation** over cross-country network simplicity.
+4. **Automation** over manual processes.
 
 ## Decision Framework
 
 When making architectural decisions, consider:
 
-1. **Security**: Does this improve or maintain security?
-2. **Scalability**: Can this scale to meet future needs?
-3. **Reliability**: Does this improve availability?
-4. **Cost**: Is the cost justified by the benefit?
-5. **Complexity**: Is the added complexity worth it?
-6. **Maintainability**: Can we maintain this long-term?
-
-## Next Steps
-
-- [Architecture Overview](/architecture/overview) - See these principles in action
-- [Component Diagram](/architecture/component-diagram) - Detailed component design
-- [Terraform Best Practices](/terraform/best-practices) - IaC implementation
-
----
-
-**Related Documentation**:
-- [Security Overview](/security/overview)
-- [Operations Overview](/operations/monitoring)
-
+1. **Global Principles**: Does this comply with the Konecta global and technical design principles (K01-K08)?
+2. **Security**: Does this improve or maintain security

@@ -9,114 +9,58 @@ This document provides a detailed breakdown of all components in the Google Clou
 
 ## High-Level Component Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         External Layer                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │   Internet   │  │  API Clients │  │  AI Services │             │
-│  │   (Users)    │  │  (11Labs)    │  │  (CrewAI)    │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Edge & Load Balancing Layer                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │ Global Load  │  │  Cloud CDN   │  │  Cloud Armor │             │
-│  │  Balancer    │  │  (Caching)   │  │  (Security)  │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Networking Layer                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │   VPC        │  │  Subnets     │  │  Firewall    │             │
-│  │  Network     │  │  (Regional)  │  │  Rules       │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Cloud NAT   │  │  VPN/Peering │  │  Private     │             │
-│  │  (Egress)    │  │  (Connect)   │  │  Access      │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Compute Layer                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Compute     │  │  Cloud Run   │  │  GKE Cluster │             │
-│  │  Engine      │  │  (Serverless)│  │  (K8s)       │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  App Engine  │  │  Cloud       │  │  Cloud       │             │
-│  │  (Optional)  │  │  Functions   │  │  Batch       │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        Storage Layer                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Cloud       │  │  Cloud SQL   │  │  Firestore   │             │
-│  │  Storage     │  │  (RDBMS)     │  │  (NoSQL)     │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Filestore   │  │  BigQuery    │  │  Spanner     │             │
-│  │  (NFS)       │  │  (Data Ware) │  │  (Global DB) │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Messaging & Integration Layer                    │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Pub/Sub     │  │  Cloud Tasks │  │  Eventarc    │             │
-│  │  (Messaging) │  │  (Async)     │  │  (Events)    │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  API Gateway │  │  Cloud       │  │  Cloud       │             │
-│  │  (Endpoints) │  │  Scheduler   │  │  Workflows   │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        AI Services Layer                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  11Labs      │  │  CrewAI      │  │  Vertex AI   │             │
-│  │  (Voice)     │  │  (Agents)    │  │  (ML)        │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Cloud       │  │  Document AI │  │  Translation │             │
-│  │  Vision API  │  │  (Processing)│  │  API         │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Security & Identity Layer                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Cloud IAM   │  │  Cloud KMS   │  │  Secret      │             │
-│  │  (Access)    │  │  (Keys)      │  │  Manager     │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  VPC Service │  │  Binary      │  │  Certificate │             │
-│  │  Controls    │  │  Auth        │  │  Manager     │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────┼──────────────────┼──────────────────┼─────────────────────┘
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Observability Layer                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Cloud       │  │  Cloud       │  │  Cloud       │             │
-│  │  Monitoring  │  │  Logging     │  │  Trace       │             │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │  Error       │  │  Profiler    │  │  Debugger    │             │
-│  │  Reporting   │  │  (APM)       │  │  (Debug)     │             │
-│  └──────────────┘  └──────────────┘  └──────────────┘             │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+C4Component
+title Google Cloud Multi-Region Hub-and-Spoke Architecture
+
+Container_Boundary(hub, "Hub VPC Network Multi-Region") {
+    Component(lb_global, "Global Cloud Load Balancer", "Anycast IP, HTTPS", "Global Edge Termination / DDoS Protection")
+    Component(cloud_armor, "Cloud Armor", "WAF / Rate Limiting", "Enforced by LB")
+    Component(iap, "IAP Policy", "Identity-Aware Proxy", "Zero Trust Access Control")
+    Component(hybrid_conn, "Hybrid Connectivity", "Cloud Interconnect / VPN", "To On-Prem / External Networks")
+    Component(monitor, "Monitoring / Observability", "Cloud Monitoring / Logging", "Centralized Logging / Alerting")
+    Component(firewall, "Firewall Rules", "VPC Flow Logs", "Ingress / Egress Control")
+
+    // Regional Groups
+    Container_Boundary(reg1, "Region 1 Primary") {
+        Component(lb_reg1, "Regional Load Balancer", "Internal Load Balancer", "Distributes within Region")
+        Component(gke_reg1, "GKE / Compute Engine", "Backend Compute", "Primary Application Instances")
+    }
+    Container_Boundary(reg2, "Region 2 Secondary / DR") {
+        Component(lb_reg2, "Regional Load Balancer", "Internal Load Balancer", "Distributes within Region")
+        Component(gke_reg2, "GKE / Compute Engine", "Backend Compute", "Failover Application Instances")
+    }
+
+    Rel(lb_global, reg1, "Routes Traffic", "Proximity Routing")
+    Rel(lb_global, reg2, "Routes Traffic", "Failover / DR")
+    Rel(cloud_armor, lb_global, "Enforces WAF Policy", "Layer 7")
+}
+
+Container_Boundary(spoke1, "Spoke VPC 1 Application A") {
+    Component(gke_spoke1, "GKE / Compute Engine", "Application Services", "Processes Business Logic")
+    Component(cloud_run1, "Cloud Run", "Serverless API / Microservices", "Auto-scaling workload")
+    Component(sql1, "Cloud SQL", "Managed PostgreSQL / MySQL", "Transactional Database")
+    Component(cs1, "Cloud Storage", "Multi-regional Buckets", "Object / Asset Storage")
+
+    Rel(gke_spoke1, sql1, "Reads / Writes", "Private IP")
+    Rel(gke_spoke1, cs1, "Accesses Objects", "Private Access")
+}
+
+Container_Boundary(ai_svc, "AI Services Integration External / Internal") {
+    Component(vertex, "Vertex AI", "ML Platform", "Model Training / Serving")
+    Component(elevenlabs, "11Labs Integration", "Voice AI API Gateway", "External API Calls")
+
+    Rel(spoke1, vertex, "Triggers Model Prediction", "API Call")
+    Rel(spoke1, elevenlabs, "Calls External Service", "Egress via Hub")
+}
+
+// Hub-Spoke Peering
+Rel(reg1, spoke1, "VPC Peering / Interconnect", "Private Access")
+Rel(reg2, spoke1, "VPC Peering / Interconnect", "Private Access")
+
+// User Ingress
+Person(user, "Internet / Users", "External Traffic Source")
+Rel(user, lb_global, "Sends HTTPS Request", "Internet")
 ```
 
 ## Component Details

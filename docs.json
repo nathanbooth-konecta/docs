@@ -39,6 +39,7 @@
           "terraform/outputs",
           "terraform/state-management",
           "terraform/best-practices"
+          "terraform/project-install"
         ]
       },
       {

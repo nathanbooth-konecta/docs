@@ -1,5 +1,11 @@
 /* Custom CSS to increase content width for larger screens */
 
+/* Target content-area by ID */
+#content-area {
+  max-width: 1400px !important;
+  width: 100% !important;
+}
+
 /* Increase max width of main content container */
 .docs-content {
   max-width: 1400px !important;
@@ -15,13 +21,26 @@ article {
   max-width: 1400px !important;
 }
 
+/* Target main content wrapper */
+main {
+  max-width: 1400px !important;
+}
+
 /* For full-width layouts on larger screens */
 @media (min-width: 1536px) {
+  #content-area {
+    max-width: 1600px !important;
+  }
+
   .docs-content {
     max-width: 1600px !important;
   }
 
   article {
     max-width: 1400px !important;
+  }
+
+  main {
+    max-width: 1600px !important;
   }
 }

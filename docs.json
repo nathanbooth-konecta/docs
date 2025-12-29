@@ -8,6 +8,11 @@
     "dark": "#00254F"
   },
   "favicon": "/favicon.ico",
+  "layout": "sidenav",
+  "modeToggle": {
+    "default": "light",
+    "isHidden": false
+  },
   "navigation": {
     "groups": [
       {

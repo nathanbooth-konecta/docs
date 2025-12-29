@@ -7,9 +7,11 @@ description: Get started quickly with deploying the Google Cloud infrastructure
 
 Deploy production-ready Google Cloud infrastructure for Agentic AI solutions in under 30 minutes!
 
-<Callout type="info" title="Estimated Time: 20-30 minutes">
+<Info>
+**Estimated Time: 20-30 minutes**
+
 This guide walks you through a complete infrastructure deployment. Actual deployment to GCP takes 15-20 minutes.
-</Callout>
+</Info>
 
 ## Prerequisites
 
@@ -36,9 +38,11 @@ Before you begin, ensure you have:
   </Card>
 </CardGroup>
 
-<Callout type="warning" title="Not Installed?">
+<Warning>
+**Not Installed?**
+
 See the [Prerequisites](/developer-guide/prerequisites) page for detailed installation instructions for your OS.
-</Callout>
+</Warning>
 
 ## Step 1: Clone the Repository
 
@@ -97,9 +101,11 @@ enable_monitoring = true
 enable_logging    = true
 ```
 
-<Callout type="info" title="Configuration Help">
+<Info>
+**Configuration Help**
+
 See the [Configuration Guide](/crewai/gcp-setup#configuration-guide) for detailed explanations of all variables.
-</Callout>
+</Info>
 
 ## Step 4: Initialize Terraform
 
@@ -123,9 +129,11 @@ See the [Configuration Guide](/crewai/gcp-setup#configuration-guide) for detaile
   </Step>
 </Steps>
 
-<Callout type="success" title="Initialization Complete">
+<Check>
+**Initialization Complete**
+
 You're ready to preview the infrastructure deployment!
-</Callout>
+</Check>
 
 ## Step 5: Review the Deployment Plan
 
@@ -141,13 +149,15 @@ Plan: 15 to add, 0 to change, 0 to destroy
 ...resources to be created...
 ```
 
-<Callout type="info" title="Understanding the Plan">
-  - **to add**: New resources that will be created
-  - **to change**: Existing resources that will be modified
-  - **to destroy**: Resources that will be deleted
-  
-  Review the plan carefully before proceeding!
-</Callout>
+<Info>
+**Understanding the Plan**
+
+- **to add**: New resources that will be created
+- **to change**: Existing resources that will be modified
+- **to destroy**: Resources that will be deleted
+
+Review the plan carefully before proceeding!
+</Info>
 
 ## Step 6: Deploy the Infrastructure
 
@@ -165,9 +175,11 @@ Do you want to perform these actions?
   Enter a value: yes
 ```
 
-<Callout type="warning" title="Deployment in Progress">
+<Warning>
+**Deployment in Progress**
+
 This will create actual resources in your GCP project. Deployment typically takes **15-20 minutes**. You'll see progress updates in your terminal as each resource is created.
-</Callout>
+</Warning>
 
 ## Step 7: Verify Deployment
 
@@ -242,9 +254,11 @@ terraform init
 terraform apply
 ```
 
-<Callout type="info" title="What Gets Deployed">
+<Info>
+**What Gets Deployed**
+
 Application-specific services, databases, caching layers, and load balancers.
-</Callout>
+</Info>
 
 ### 2. Configure CI/CD
 
@@ -290,31 +304,37 @@ gcloud logging sinks create cloud-storage-sink \
 
 ### Terraform Init Fails
 
-<Callout type="error" title="Error: Failed to download module">
-  ```bash
-  rm -rf .terraform
-  terraform init
-  ```
-  Clear the Terraform cache and try again.
-</Callout>
+<Warning>
+**Error: Failed to download module**
+
+```bash
+rm -rf .terraform
+terraform init
+```
+Clear the Terraform cache and try again.
+</Warning>
 
 ### Authentication Errors
 
-<Callout type="error" title="Error: Google Cloud credentials not found">
-  ```bash
-  gcloud auth application-default login
-  ```
-  Re-authenticate with GCP.
-</Callout>
+<Warning>
+**Error: Google Cloud credentials not found**
+
+```bash
+gcloud auth application-default login
+```
+Re-authenticate with GCP.
+</Warning>
 
 ### API Not Enabled
 
-<Callout type="error" title="Error: Service has not been used in project">
-  ```bash
-  gcloud services enable <service-name>
-  ```
-  Enable the required GCP service manually.
-</Callout>
+<Warning>
+**Error: Service has not been used in project**
+
+```bash
+gcloud services enable <service-name>
+```
+Enable the required GCP service manually.
+</Warning>
 
 For more troubleshooting, see the [Full Troubleshooting Guide](/crewai/gcp-setup#troubleshooting).
 
@@ -338,10 +358,12 @@ For more troubleshooting, see the [Full Troubleshooting Guide](/crewai/gcp-setup
   </Step>
 </Steps>
 
-<Callout type="success" title="Congratulations! 🎉">
-Your infrastructure is now deployed and ready to use. 
+<Check>
+**Congratulations! 🎉**
+
+Your infrastructure is now deployed and ready to use.
 Check the [Architecture Overview](/architecture/overview) to understand what was created, or dive into the [Developer Guide](/developer-guide/setup) to start building on top of it.
-</Callout>
+</Check>
 
 ## Troubleshooting
 

@@ -9,9 +9,11 @@ description: Post Installation Steps
 
 After successfully deploying the CrewAI Platform infrastructure, these initial setup steps are necessary to configure the core system, set up permissions, and prepare the environment for use.
 
-<Callout type="warning" title="Important">
+<Warning>
+**Important**
+
 Complete these setup steps immediately after deployment. Skipping any steps may result in missing functionality or access issues.
-</Callout>
+</Warning>
 
 ## ⚙️ Initial Setup Tasks
 
@@ -75,9 +77,11 @@ assign_owner_role("nathan.booth@konecta.com")
 
 ## 🚀 Enable Studio V2 (Optional)
 
-<Callout type="info" title="What is Studio V2?">
+<Info>
+**What is Studio V2?**
+
 Studio V2 is the next-generation interface and agent capability for CrewAI, providing enhanced features and improved user experience.
-</Callout>
+</Info>
 
 <Steps>
 <Step title="Check LLM Connection and Delete Old Crews">
@@ -166,8 +170,10 @@ After completing all setup tasks, verify the platform's readiness:
 kubectl logs -l app=crewai-worker --tail=50
 ```
 
-<Callout type="success" title="Congratulations! 🎉">
+<Check>
+**Congratulations! 🎉**
+
 Your CrewAI platform is now fully installed and configured. Start creating and deploying crews!
 
 For more information, visit the [main documentation](/) or explore the [Architecture Overview](/architecture/overview).
-</Callout>
+</Check>

@@ -1,7 +1,7 @@
-export const metadata = {
-  title: "CrewAI GCP Infrastructure",
+---
+  title: "CrewAI GCP Infrastructure Setup",
   description: "Production-grade Terraform IaC for CrewAI platform deployment on Google Cloud Platform with enterprise security and compliance",
-};
+---
 
 # 🚀 CrewAI GCP Infrastructure Setup Blueprint
 
@@ -204,9 +204,9 @@ http         ~> 3.4   # IP detection for security groups
 
 ## 📋 Prerequisites
 
-<Callout type="warning" title="Read Before Starting">
+<Warning>
 Missing prerequisites can cause deployment failures. Ensure all tools are installed and properly configured.
-</Callout>
+</Warning>
 
 ### Required Tools
 
@@ -237,7 +237,9 @@ Missing prerequisites can cause deployment failures. Ensure all tools are instal
   choco install awscli
   ```
   
-  <Callout type="info" title="Don't Have Chocolatey?">
+  <Info>
+  **Don't have Chocolatey?**
+  
   Install Chocolatey first: https://chocolatey.org/install
   
   Or use **winget** (Windows Package Manager):
@@ -247,7 +249,7 @@ Missing prerequisites can cause deployment failures. Ensure all tools are instal
   winget install -e --id Kubernetes.kubectl
   winget install -e --id Amazon.AWSCLI
   ```
-  </Callout>
+  </Info>
   </Tab>
   <Tab title="Manual Installation">
   - [Terraform](https://www.terraform.io/downloads.html) - Version 1.0.0 or higher
@@ -299,9 +301,9 @@ kubectl version --client
 aws --version
 ```
 
-<Callout type="success" title="Installation Complete">
+<Check>
 If all commands return version information, you're ready to proceed!
-</Callout>
+</Check>
 
 ## 🚀 Quick Start Guide
 
@@ -352,9 +354,9 @@ If all commands return version information, you're ready to proceed!
     ```bash
     make apply
     ```
-    <Callout type="info" title="Deployment Time">
-    This takes approximately 15-20 minutes. Grab a coffee!
-    </Callout>
+    <Info>
+    **Deployment Time:** This takes approximately 15-20 minutes. Grab a coffee!
+    </Info>
   </Step>
   
   <Step title="Verify Deployment">
@@ -707,9 +709,9 @@ cluster_node_machine_type = "e2-standard-4"  # ✅ Valid GCP machine type
 
 ### Step 1: Prepare Your Environment
 
-<Callout type="warning" title="Critical Prerequisites">
+<Warning>
 Ensure you have completed all prerequisites. Incorrect configuration can result in failed deployments or unexpected charges.
-</Callout>
+</Warning>
 
 <Tabs>
   <Tab title="Clone & Authenticate">
@@ -749,36 +751,38 @@ cp terraform.auto.tfvars.example terraform.auto.tfvars
 nano terraform.auto.tfvars  # or vim, code, etc.
 ```
 
-<Callout type="info" title="Required Configuration Sections">
-  <AccordionGroup>
-    <Accordion title="Organizational Settings">
-      - `organization_id`: Your GCP Organization ID
-      - `root_folder_name`: Root folder name (e.g., "Global IT")
-      - `solution_folder_name`: Solution/Product folder (e.g., "CrewAI")
-      - `env_folder_name`: Environment (DEV, PROD, STG)
-      - `region_folder_name`: Region/Hub (CORP, LATAM, IBERIA)
-      - `country_folder_name`: Country code (CO, BR, AR, etc.)
-    </Accordion>
-    <Accordion title="Project Details">
-      - `project_id`: Unique project ID
-      - `project_name`: Display name
-      - `gcp_region`: GCP region (e.g., us-central1)
-      - `billing_account`: Billing account ID
-    </Accordion>
-    <Accordion title="Billing & Tags">
-      - `budget`: Monthly budget (EUR)
-      - `department`: Department name
-      - `country`: ISO country code
-      - `ceco`: Cost center code
-    </Accordion>
-    <Accordion title="CrewAI Platform">
-      - `vpc_cidr`: VPC CIDR block
-      - `cluster_name`: GKE cluster name
-      - `db_instance_tier`: Database tier
-      - `cluster_node_machine_type`: Node machine type
-    </Accordion>
-  </AccordionGroup>
-</Callout>
+<Info>
+**Required Configuration Sections**
+
+<AccordionGroup>
+  <Accordion title="Organizational Settings">
+    - `organization_id`: Your GCP Organization ID
+    - `root_folder_name`: Root folder name (e.g., "Global IT")
+    - `solution_folder_name`: Solution/Product folder (e.g., "CrewAI")
+    - `env_folder_name`: Environment (DEV, PROD, STG)
+    - `region_folder_name`: Region/Hub (CORP, LATAM, IBERIA)
+    - `country_folder_name`: Country code (CO, BR, AR, etc.)
+  </Accordion>
+  <Accordion title="Project Details">
+    - `project_id`: Unique project ID
+    - `project_name`: Display name
+    - `gcp_region`: GCP region (e.g., us-central1)
+    - `billing_account`: Billing account ID
+  </Accordion>
+  <Accordion title="Billing & Tags">
+    - `budget`: Monthly budget (EUR)
+    - `department`: Department name
+    - `country`: ISO country code
+    - `ceco`: Cost center code
+  </Accordion>
+  <Accordion title="CrewAI Platform">
+    - `vpc_cidr`: VPC CIDR block
+    - `cluster_name`: GKE cluster name
+    - `db_instance_tier`: Database tier
+    - `cluster_node_machine_type`: Node machine type
+  </Accordion>
+</AccordionGroup>
+</Info>
 
 ### Step 3: Validate Configuration
 
@@ -786,13 +790,15 @@ nano terraform.auto.tfvars  # or vim, code, etc.
 make validate
 ```
 
-<Callout type="info" title="What Gets Validated">
-  - <Badge>✓</Badge> **terraform fmt** - Formats your code
-  - <Badge>✓</Badge> **terraform validate** - Checks HCL syntax
-  - <Badge>✓</Badge> **tflint** - Checks best practices
+<Info>
+**What Gets Validated**
 
-  Expected output: `Success: no issues found`
-</Callout>
+- <Badge>✓</Badge> **terraform fmt** - Formats your code
+- <Badge>✓</Badge> **terraform validate** - Checks HCL syntax
+- <Badge>✓</Badge> **tflint** - Checks best practices
+
+Expected output: `Success: no issues found`
+</Info>
 
 ### Step 4: Initialize Terraform
 
@@ -800,9 +806,9 @@ make validate
 make init
 ```
 
-<Callout type="success" title="Expected Behavior">
+<Check>
 Terraform downloads required providers and initializes the state backend. This is a one-time operation.
-</Callout>
+</Check>
 
 ### Step 5: Preview Infrastructure Changes
 
@@ -810,11 +816,13 @@ Terraform downloads required providers and initializes the state backend. This i
 make plan
 ```
 
-<Callout type="info" title="Plan Output">
-  Expected: `Plan: 70 to add, 0 to change, 0 to destroy`
-  
-  This shows the 70+ resources that will be created in GCP.
-</Callout>
+<Info>
+**Plan Output**
+
+Expected: `Plan: 70 to add, 0 to change, 0 to destroy`
+
+This shows the 70+ resources that will be created in GCP.
+</Info>
 
 ```bash
 # Optional: Save plan to file for review
@@ -827,21 +835,23 @@ terraform plan -out=tfplan
 make apply
 ```
 
-<Callout type="warning" title="Confirm Deployment">
-  When prompted `Do you want to perform these actions?`, type **yes** to confirm.
-  
-  This will create 70+ actual resources in GCP. Deployment takes **15-20 minutes**.
-</Callout>
+<Warning>
+**Confirm Deployment**
 
-<Callout type="success" title="Deployment Complete!" icon="check">
-  Terraform will output important information you'll need later:
-  - <Badge>Cluster endpoint</Badge>
-  - <Badge>Database connection details</Badge>
-  - <Badge>Bucket names</Badge>
-  - <Badge>Service account details</Badge>
-  
-  **Save this output for later reference!**
-</Callout>
+When prompted `Do you want to perform these actions?`, type **yes** to confirm.
+
+This will create 70+ actual resources in GCP. Deployment takes **15-20 minutes**.
+</Warning>
+
+<Check>
+Terraform will output important information you'll need later:
+- <Badge>Cluster endpoint</Badge>
+- <Badge>Database connection details</Badge>
+- <Badge>Bucket names</Badge>
+- <Badge>Service account details</Badge>
+
+**Save this output for later reference!**
+</Check>
 
 ### Step 7: Verify Deployment
 
@@ -1022,14 +1032,16 @@ Based on production-recommended configuration:
 | Cloud Functions | €10-20/month | Budget monitoring |
 | **Total Production** | **€710-1,115/month** | **Fully HA enterprise config** |
 
-<Callout type="success" title="Cost Optimization Options" icon="dollar-sign">
-  <AccordionGroup>
-    <Accordion title="For Development Environments">
-      - Use `e2-standard-2` instead of `e2-standard-4`
-      - Set `cluster_initial_node_count = 1`
-      - Set `reader_instance_count = 0` (no replicas)
-      - Set `db_instance_tier = "db-custom-2-7680"` (2 vCPU, 7.5GB RAM)
-      - Disable advanced monitoring and logging to reduce costs
+<Tip>
+**Cost Optimization Options**
+
+<AccordionGroup>
+  <Accordion title="For Development Environments">
+    - Use `e2-standard-2` instead of `e2-standard-4`
+    - Set `cluster_initial_node_count = 1`
+    - Set `reader_instance_count = 0` (no replicas)
+    - Set `db_instance_tier = "db-custom-2-7680"` (2 vCPU, 7.5GB RAM)
+    - Disable advanced monitoring and logging to reduce costs
       - **Estimated Savings**: €400-500/month
     </Accordion>
     <Accordion title="For Production Environments">
@@ -1043,7 +1055,7 @@ Based on production-recommended configuration:
       - **Recommended**: €800-1,000/month budget
     </Accordion>
   </AccordionGroup>
-</Callout>
+</Tip>
 
 ## 🐛 Troubleshooting
 
@@ -1363,13 +1375,13 @@ For licensing questions, contact: [your-team@konecta.com]
 
 ---
 
-<Callout type="success" title="Next Steps">
+<Check>
 
 Ready to deploy? Follow the [Quick Start Guide](#quick-start-guide) to get your CrewAI platform running on GCP in minutes!
 
 Questions? Check the [Configuration Guide](#configuration-guide) or [Troubleshooting](#troubleshooting) sections.
 
-</Callout>
+</Check>
 
 ---
 

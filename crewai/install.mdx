@@ -1,5 +1,5 @@
 ---
-title: Cloud Shell Installation Guide
+title: CrewAI Installation Guide
 description: Install CrewAI Platform on Google Cloud using Cloud Shell
 ---
 
@@ -7,11 +7,13 @@ description: Install CrewAI Platform on Google Cloud using Cloud Shell
 
 A step-by-step guide to install the CrewAI Platform using Google Cloud Shell, including project setup, configuration, and platform deployment.
 
-<Callout type="info" title="What is Cloud Shell?">
+<Info>
 Google Cloud Shell is a free, browser-based terminal that comes pre-configured with the Google Cloud SDK, kubectl, and other tools you need for installation.
-</Callout>
+</Info>
 
-<Callout type="warning" title="Prerequisites: GCP Infrastructure Setup Required">
+<Warning>
+**Prerequisites: GCP Infrastructure Setup Required**
+
 Before installing CrewAI Platform, you must first set up your GCP infrastructure including:
 - GCP Organization and Project structure
 - GKE Kubernetes cluster
@@ -20,7 +22,7 @@ Before installing CrewAI Platform, you must first set up your GCP infrastructure
 - Networking and security configuration
 
 Follow the [**GCP Infrastructure Setup Guide**](/crewai/gcp-setup) to provision these resources before proceeding with this installation.
-</Callout>
+</Warning>
 
 ## 📋 Prerequisites
 
@@ -41,7 +43,9 @@ Before you begin, ensure you have:
   </Card>
 </CardGroup>
 
-<Callout type="warning" title="Get Your Credentials">
+<Warning>
+**Get Your Credentials**
+
 Access your registry credentials via: [https://enterprise.crewai.com/crewai/install](https://enterprise.crewai.com/crewai/install)
 
 You'll need:
@@ -51,7 +55,7 @@ You'll need:
 **Need help accessing the portal?** Contact:
 - nathan.booth@konecta.com
 - mischa.vanoijen@konecta.com
-</Callout>
+</Warning>
 
 ## 🚀 Installation Steps
 
@@ -68,9 +72,9 @@ gcloud config set project $PROJECT_ID
 gcloud config get-value project
 ```
 
-<Callout type="success" title="Project Set">
+<Check>
 Your Cloud Shell will now use this project for all subsequent commands.
-</Callout>
+</Check>
 
 ### Step 2: Create Project Metadata Folder
 
@@ -170,9 +174,9 @@ The portal provides a complete installation sequence in this format:
    helm install crewai-platform oci://registry.crewai.com/crewai/stable/crewai-platform --version 0.3.1 --values my-values.yaml
 ```
 
-<Callout type="info" title="Copy Portal Commands">
+<Info>
 Copy the exact commands provided by the portal, as they contain your unique authentication token and version-specific installation details.
-</Callout>
+</Info>
 
 ### Step 4: Prepare Configuration File (my-values.yaml)
 
@@ -201,14 +205,16 @@ Use the values template provided by the enterprise portal as a starting point. H
     # - All secrets with actual values
     ```
     
-    <Callout type="warning" title="Security: Secrets Management">
+    <Warning>
+    **Security: Secrets Management**
+
     **NEVER commit `my-values.yaml` to version control if it contains secrets!**
     
     Instead:
     1. Store secrets in Google Cloud Secret Manager
     2. Use CI/CD pipeline to inject secrets
     3. Or create a `.gitignore` entry and manage separately
-    </Callout>
+    </Warning>
   </Step>
 
   <Step title="Reference: Sample Configuration Structure">
@@ -366,7 +372,9 @@ Use the values template provided by the enterprise portal as a starting point. H
 
 ### Sensitive Fields Security
 
-<Callout type="warning" title="Never Store Secrets in my-values.yaml">
+<Warning>
+**Never Store Secrets in my-values.yaml**
+
 The following fields must **NEVER** be committed to version control:
 
 - `DB_PASSWORD`: Store in Google Cloud Secret Manager
@@ -381,7 +389,7 @@ The following fields must **NEVER** be committed to version control:
 2. Use Kubernetes External Secrets Operator (ESO) to sync them
 3. Reference Secret Manager values in your deployment pipeline
 4. Or use GCP Workload Identity for automatic credential injection
-</Callout>
+</Warning>
 
 ### Step 5: Prepare Your Environment
 
@@ -404,12 +412,14 @@ Ensure your cluster is ready for deployment:
       --format="get(ipAddresses[0].ipAddress)"
     ```
     
-    <Callout type="info" title="Connection String Format">
+    <Info>
+    **Connection String Format**
+
     For Cloud SQL Private IP:
     ```
     DB_HOST: your-instance.c.your-project.internal
     ```
-    </Callout>
+    </Info>
   </Step>
 
   <Step title="Verify Default Storage Class">
@@ -424,9 +434,11 @@ Ensure your cluster is ready for deployment:
       -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
     ```
     
-    <Callout type="success" title="Storage Class Ready">
+    <Check>
+    **Storage Class Ready**
+
     Your cluster now has a default storage class for persistent volumes.
-    </Callout>
+    </Check>
   </Step>
 
   <Step title="Install Preflight Validation Plugin">
@@ -459,7 +471,9 @@ helm template oci://registry.crewai.com/crewai/stable/crewai-platform \
 echo "Preflight check complete. Review any warnings or errors above."
 ```
 
-<Callout type="warning" title="Address Preflight Issues">
+<Warning>
+**Address Preflight Issues**
+
 The preflight check validates:
 - ✓ Cluster resources (CPU, memory)
 - ✓ Storage classes
@@ -467,7 +481,7 @@ The preflight check validates:
 - ✓ Kubernetes version compatibility
 
 Address any failures before proceeding to installation.
-</Callout>
+</Warning>
 
 ### Step 7: Install the CrewAI Platform
 
@@ -497,9 +511,11 @@ Deploy the CrewAI Platform using the Helm command from the portal:
     kubectl get pods -l app.kubernetes.io/name=crewai-platform
     ```
     
-    <Callout type="info" title="Installation Time">
+    <Info>
+    **Installation Time**
+
     Installation typically takes 5-15 minutes depending on image sizes and cluster resources.
-    </Callout>
+    </Info>
   </Step>
   
   <Step title="Verify Installation Success">
@@ -563,9 +579,11 @@ To upgrade to a newer version of CrewAI Platform:
   </Step>
 </Steps>
 
-<Callout type="success" title="Upgrade Complete">
+<Check>
+**Upgrade Complete**
+
 Your platform is now running the latest version!
-</Callout>
+</Check>
 
 ## 📊 Verification Steps
 
@@ -734,9 +752,11 @@ After successful installation:
   </Step>
 </Steps>
 
-<Callout type="success" title="Installation Complete! 🎉">
+<Check>
+**Installation Complete! 🎉**
+
 Your CrewAI Platform is now installed on Google Cloud. Proceed to the [Post-Installation Guide](/crewai/post-install) to complete setup and access the application.
-</Callout>
+</Check>
 
 ## 📚 Additional Resources
 

@@ -19,27 +19,26 @@
         ]
       },
       {
+        "group": "CrewAI Platform",
+        "pages": [
+          "crewai/gcp-setup",
+          "crewai/install",
+          "crewai/post-install",
+          "crewai/troubleshooting",
+          "crewai/third-party",
+          "crewai/faq",
+          "crewai/changelog"
+        ]
+      },
+      {
         "group": "Architecture",
         "pages": [
           "architecture/overview",
           "architecture/design-principles",
           "architecture/component-diagram",
-          "architecture/blueprints",
           "architecture/networking",
-          "architecture/security-architecture"
-        ]
-      },
-      {
-        "group": "Terraform",
-        "pages": [
-          "terraform/overview",
-          "terraform/directory-structure",
-          "terraform/modules",
-          "terraform/variables",
-          "terraform/outputs",
-          "terraform/state-management",
-          "terraform/best-practices",
-          "terraform/project-install"
+          "architecture/security-architecture",
+          "architecture/blueprints"
         ]
       },
       {
@@ -48,14 +47,26 @@
           "developer-guide/prerequisites",
           "developer-guide/setup",
           "developer-guide/authentication",
+          "developer-guide/local-development",
           "developer-guide/deployment",
-          "developer-guide/testing",
-          "developer-guide/troubleshooting",
-          "developer-guide/local-development"
+          "developer-guide/testing"
         ]
       },
       {
-        "group": "Services & Components",
+        "group": "Terraform",
+        "pages": [
+          "terraform/overview",
+          "terraform/quick-start",
+          "terraform/directory-structure",
+          "terraform/modules",
+          "terraform/variables",
+          "terraform/outputs",
+          "terraform/state-management",
+          "terraform/best-practices"
+        ]
+      },
+      {
+        "group": "GCP Services",
         "pages": [
           "services/compute",
           "services/storage",
@@ -66,7 +77,7 @@
         ]
       },
       {
-        "group": "Security & Compliance",
+        "group": "Security",
         "pages": [
           "security/overview",
           "security/iam",
@@ -95,22 +106,12 @@
         ]
       },
       {
-        "group": "Reference",
+        "group": "Resources",
         "pages": [
           "reference/glossary",
           "reference/faq",
           "reference/changelog",
           "reference/api-reference"
-        ]
-      },
-      {
-        "group": "CrewAi",
-        "pages": [
-          "crewai/gcp-setup",
-          "crewai/install",
-          "crewai/post-install",
-          "crewai/faq",
-          "crewai/changelog"
         ]
       }
     ]
@@ -123,19 +124,37 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@example.com"
+        "href": "mailto:support@konecta.com"
       }
     ],
     "primary": {
       "type": "button",
       "label": "GitHub",
-      "href": "https://github.com/your-org/your-repo"
+      "href": "https://github.com/nathanbooth-konecta/docs"
     }
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/your-org/your-repo",
-      "linkedin": "https://www.linkedin.com/company/your-org"
+      "github": "https://github.com/nathanbooth-konecta/docs",
+      "linkedin": "https://www.linkedin.com/company/konecta"
     }
+  },
+  "anchors": [
+    {
+      "name": "CrewAI Docs",
+      "icon": "book-open",
+      "url": "https://enterprise-docs.crewai.com"
+    },
+    {
+      "name": "GCP Console",
+      "icon": "cloud",
+      "url": "https://console.cloud.google.com"
+    }
+  ],
+  "search": {
+    "prompt": "Search documentation..."
+  },
+  "topbar": {
+    "style": "gradient"
   }
 }

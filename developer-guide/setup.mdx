@@ -7,9 +7,14 @@ description: Step-by-step guide to set up your development environment
 
 This guide walks you through setting up your local development environment for working with the Google Cloud infrastructure codebase.
 
+<Tip>
+Complete the [Prerequisites](/developer-guide/prerequisites) before starting this setup guide.
+</Tip>
+
 ## Step 1: Clone the Repository
 
-```bash
+<CodeGroup>
+```bash Unix/Linux
 # Clone the repository
 git clone https://github.com/your-org/gcp-iac-repo.git
 cd gcp-iac-repo
@@ -18,11 +23,22 @@ cd gcp-iac-repo
 ls -la
 ```
 
+```powershell Windows
+# Clone the repository
+git clone https://github.com/your-org/gcp-iac-repo.git
+cd gcp-iac-repo
+
+# Verify the structure
+dir
+```
+</CodeGroup>
+
 ## Step 2: Install Dependencies
 
 Ensure you have all required tools installed (see [Prerequisites](/developer-guide/prerequisites)):
 
-```bash
+<CodeGroup>
+```bash Unix/Linux
 # Verify Terraform
 terraform version
 
@@ -33,44 +49,77 @@ gcloud version
 git --version
 ```
 
+```powershell Windows
+# Verify Terraform
+terraform version
+
+# Verify gcloud
+gcloud version
+
+# Verify Git
+git --version
+```
+</CodeGroup>
+
+<Check>
+All commands should return version numbers without errors.
+</Check>
+
 ## Step 3: Configure Google Cloud Authentication
 
-### Option A: User Credentials (Development)
+<Tabs>
+  <Tab title="User Credentials (Development)">
+    Use this method for local development with your user account:
 
-```bash
-# Login with your user account
-gcloud auth login
+    ```bash
+    # Login with your user account
+    gcloud auth login
 
-# Set application default credentials
-gcloud auth application-default login
+    # Set application default credentials
+    gcloud auth application-default login
 
-# Set your project
-gcloud config set project YOUR_PROJECT_ID
-```
+    # Set your project
+    gcloud config set project YOUR_PROJECT_ID
+    ```
 
-### Option B: Service Account (CI/CD)
+    <Note>
+    User credentials are convenient for development but should never be used in CI/CD pipelines.
+    </Note>
+  </Tab>
 
-```bash
-# Create a service account key (if needed)
-gcloud iam service-accounts keys create key.json \
-  --iam-account terraform@PROJECT_ID.iam.gserviceaccount.com
+  <Tab title="Service Account (CI/CD)">
+    Use this method for automated deployments and CI/CD:
 
-# Set the environment variable
-export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/key.json"
-```
+    ```bash
+    # Create a service account key (if needed)
+    gcloud iam service-accounts keys create key.json \
+      --iam-account terraform@PROJECT_ID.iam.gserviceaccount.com
+
+    # Set the environment variable
+    export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/key.json"
+    ```
+
+    <Warning>
+    **Security Best Practice**: Never commit service account keys to version control. Add `*.json` to your `.gitignore`.
+    </Warning>
+  </Tab>
+</Tabs>
 
 ## Step 4: Enable Required APIs
 
 Enable the necessary Google Cloud APIs:
 
-```bash
+<CodeGroup>
+```bash Using Script
 # Navigate to the scripts directory
 cd scripts
 
 # Run the API enablement script (if available)
 ./enable-apis.sh
+```
 
-# Or enable manually
+```bash Manual
+# Enable APIs manually
 gcloud services enable \
   compute.googleapis.com \
   storage.googleapis.com \
@@ -81,6 +130,11 @@ gcloud services enable \
   logging.googleapis.com \
   monitoring.googleapis.com
 ```
+</CodeGroup>
+
+<Info>
+API enablement can take a few minutes. You can check the status in the [GCP Console](https://console.cloud.google.com/apis/library).
+</Info>
 
 ## Step 5: Set Up Terraform Backend
 
@@ -88,7 +142,8 @@ The Terraform backend stores state in Google Cloud Storage.
 
 ### Create Backend Bucket
 
-```bash
+<CodeGroup>
+```bash Unix/Linux
 # Set variables
 PROJECT_ID="your-project-id"
 BUCKET_NAME="terraform-state-${PROJECT_ID}"
@@ -99,9 +154,25 @@ gsutil mb -p ${PROJECT_ID} -l us-central1 gs://${BUCKET_NAME}
 # Enable versioning
 gsutil versioning set on gs://${BUCKET_NAME}
 
-# Enable object versioning
+# Apply lifecycle policy
 gsutil lifecycle set lifecycle.json gs://${BUCKET_NAME}
 ```
+
+```powershell Windows
+# Set variables
+$PROJECT_ID = "your-project-id"
+$BUCKET_NAME = "terraform-state-$PROJECT_ID"
+
+# Create the bucket
+gsutil mb -p $PROJECT_ID -l us-central1 gs://$BUCKET_NAME
+
+# Enable versioning
+gsutil versioning set on gs://$BUCKET_NAME
+
+# Apply lifecycle policy
+gsutil lifecycle set lifecycle.json gs://$BUCKET_NAME
+```
+</CodeGroup>
 
 Create `lifecycle.json`:
 
@@ -120,6 +191,10 @@ Create `lifecycle.json`:
 }
 ```
 
+<Note>
+This lifecycle policy keeps the 10 most recent versions of each state file and deletes older versions to save storage costs.
+</Note>
+
 ### Configure Backend
 
 Update `backend.tf` or create environment-specific backend:
@@ -137,7 +212,8 @@ terraform {
 
 ### Copy Example Variables
 
-```bash
+<CodeGroup>
+```bash Unix/Linux
 # Copy the example file
 cp terraform.tfvars.example terraform.tfvars
 
@@ -145,9 +221,56 @@ cp terraform.tfvars.example terraform.tfvars
 cp environments/dev/terraform.tfvars.example environments/dev/terraform.tfvars
 ```
 
+```powershell Windows
+# Copy the example file
+Copy-Item terraform.tfvars.example terraform.tfvars
+
+# Or for environment-specific
+Copy-Item environments/dev/terraform.tfvars.example environments/dev/terraform.tfvars
+```
+</CodeGroup>
+
 ### Edit Variables
 
-Edit `terraform.tfvars` with your values:
+Edit `terraform.tfvars` with your values. Here are the key parameters:
+
+<ParamField path="project_id" type="string" required>
+  Your Google Cloud project ID
+</ParamField>
+
+<ParamField path="region" type="string" default="us-central1">
+  GCP region for resource deployment
+</ParamField>
+
+<ParamField path="zone" type="string" default="us-central1-a">
+  GCP zone within the region
+</ParamField>
+
+<ParamField path="environment" type="string" required>
+  Environment name (dev, staging, prod)
+</ParamField>
+
+<ParamField path="vpc_name" type="string" default="agentic-ai-vpc">
+  Name of the VPC network
+</ParamField>
+
+<ParamField path="subnet_name" type="string" default="agentic-ai-subnet">
+  Name of the subnet
+</ParamField>
+
+<ParamField path="instance_type" type="string" default="e2-small">
+  GCE machine type for compute instances
+</ParamField>
+
+<ParamField path="min_instances" type="number" default="1">
+  Minimum number of instances for autoscaling
+</ParamField>
+
+<ParamField path="max_instances" type="number" default="3">
+  Maximum number of instances for autoscaling
+</ParamField>
+
+**Example `terraform.tfvars`:**
 
 ```hcl
 project_id  = "your-project-id"
@@ -201,11 +324,16 @@ terraform fmt -recursive
 terraform plan
 ```
 
+<Tip>
+Run `terraform fmt` before committing code to ensure consistent formatting across the team.
+</Tip>
+
 ## Step 9: Set Up Pre-commit Hooks (Optional)
 
 Install pre-commit hooks for automatic formatting and validation:
 
-```bash
+<CodeGroup>
+```bash Unix/Linux
 # Install pre-commit
 pip install pre-commit
 
@@ -215,6 +343,22 @@ pre-commit install
 # Test hooks
 pre-commit run --all-files
 ```
+
+```powershell Windows
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Test hooks
+pre-commit run --all-files
+```
+</CodeGroup>
+
+<Note>
+Pre-commit hooks help catch formatting and validation issues before they reach code review.
+</Note>
 
 ## Step 10: Configure Your IDE
 
@@ -260,6 +404,10 @@ terraform plan
 # Should show what would be created without errors
 ```
 
+<Check>
+If `terraform plan` completes without errors, your setup is successful!
+</Check>
+
 ## Step 12: Set Up Environment Variables (Optional)
 
 Create a `.env` file for environment variables:
@@ -298,69 +446,100 @@ gcp-iac-repo/
 
 ## Troubleshooting
 
-### Backend Initialization Fails
+<AccordionGroup>
+  <Accordion title="Backend Initialization Fails">
+    ```bash
+    # Verify bucket exists
+    gsutil ls gs://terraform-state-bucket
 
-```bash
-# Verify bucket exists
-gsutil ls gs://terraform-state-bucket
+    # Check permissions
+    gcloud projects get-iam-policy PROJECT_ID
 
-# Check permissions
-gcloud projects get-iam-policy PROJECT_ID
+    # Try re-initializing
+    terraform init -reconfigure
+    ```
 
-# Try re-initializing
-terraform init -reconfigure
-```
+    **Common Causes:**
+    - Bucket doesn't exist - create it first
+    - Insufficient permissions - ensure you have Storage Admin role
+    - Incorrect bucket name in backend.tf
+  </Accordion>
 
-### Authentication Errors
+  <Accordion title="Authentication Errors">
+    ```bash
+    # Re-authenticate
+    gcloud auth application-default login
 
-```bash
-# Re-authenticate
-gcloud auth application-default login
+    # Verify credentials
+    gcloud auth list
 
-# Verify credentials
-gcloud auth list
+    # Check service account (if using)
+    gcloud iam service-accounts list
+    ```
 
-# Check service account (if using)
-gcloud iam service-accounts list
-```
+    **Common Causes:**
+    - Expired credentials - re-authenticate
+    - Wrong project set - verify with `gcloud config get-value project`
+    - Service account key file path incorrect
+  </Accordion>
 
-### Provider Version Issues
+  <Accordion title="Provider Version Issues">
+    ```bash
+    # Update provider versions in versions.tf
+    # Then re-initialize
+    terraform init -upgrade
+    ```
 
-```bash
-# Update provider versions in versions.tf
-# Then re-initialize
-terraform init -upgrade
-```
+    **Common Causes:**
+    - Outdated provider version in lock file
+    - Incompatible provider version constraints
+    - Cached provider plugins
+  </Accordion>
 
-### State Lock Issues
+  <Accordion title="State Lock Issues">
+    If state is locked (another operation in progress):
 
-If state is locked (another operation in progress):
+    ```bash
+    # Check for locks
+    terraform force-unlock LOCK_ID
 
-```bash
-# Check for locks
-terraform force-unlock LOCK_ID
+    # Only use if you're sure no other operation is running
+    ```
 
-# Only use if you're sure no other operation is running
-```
+    <Warning>
+    Only force-unlock if you're certain no other Terraform operation is running. Doing so during an active operation can corrupt your state.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
 
 ## Next Steps
 
-Now that your environment is set up:
-
-1. [Authentication](/developer-guide/authentication) - Learn about authentication options
-2. [Deployment](/developer-guide/deployment) - Deploy your first infrastructure
-3. [Local Development](/developer-guide/local-development) - Set up local development workflows
+<CardGroup cols={3}>
+  <Card title="Authentication" icon="key" href="/developer-guide/authentication">
+    Learn about authentication options and best practices
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/developer-guide/deployment">
+    Deploy your first infrastructure
+  </Card>
+  <Card title="Local Development" icon="code" href="/developer-guide/local-development">
+    Set up local development workflows
+  </Card>
+</CardGroup>
 
 ## Additional Resources
 
-- [Terraform Documentation](https://www.terraform.io/docs)
-- [Google Cloud Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
-- [Terraform Best Practices](/terraform/best-practices)
-
----
-
-**Related Documentation**:
-- [Prerequisites](/developer-guide/prerequisites)
-- [Authentication](/developer-guide/authentication)
-- [Quickstart](/quickstart)
+<CardGroup cols={2}>
+  <Card title="Terraform Documentation" icon="book" href="https://www.terraform.io/docs">
+    Official Terraform documentation and guides
+  </Card>
+  <Card title="Google Cloud Provider" icon="cloud" href="https://registry.terraform.io/providers/hashicorp/google/latest/docs">
+    Terraform Google Cloud Provider reference
+  </Card>
+  <Card title="Terraform Best Practices" icon="star" href="/terraform/best-practices">
+    Internal best practices and conventions
+  </Card>
+  <Card title="Prerequisites" icon="list-check" href="/developer-guide/prerequisites">
+    Review required tools and permissions
+  </Card>
+</CardGroup>
 

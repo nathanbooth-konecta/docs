@@ -1,0 +1,800 @@
+---
+title: Troubleshooting Guide
+description: Solutions for common issues encountered during CrewAI installation, configuration, and operation
+---
+
+# Troubleshooting Guide
+
+This guide provides solutions for common issues encountered during CrewAI installation, configuration, and operation.
+
+<Tip>
+Use the debug commands reference at the bottom of this page for quick troubleshooting commands.
+</Tip>
+
+## Installation & Deployment Issues
+
+### Helm Installation Failures
+
+<AccordionGroup>
+  <Accordion title="Issue: Helm chart installation fails with 'values validation error'">
+    **Cause**: Missing or incorrectly formatted required values in `my-values.yaml`
+
+    **Solution**:
+    - Verify all required variables are present in your values file
+    - Check YAML syntax for formatting errors (indentation, quotes)
+    - Use `helm lint` to validate the chart before installation
+    - Review [Prepare Configuration File guide](/crewai/install#step-4-prepare-configuration-file-my-valuesyaml)
+  </Accordion>
+
+  <Accordion title="Issue: 'ImagePullBackOff' errors after deployment">
+    **Cause**: Container registry authentication failure or image doesn't exist
+
+    **Solution**:
+    - Verify `image.registries[].password` is correctly base64-encoded
+    - Confirm the service account has access to the container registry
+    - Check that the image tag exists in the specified registry
+    - Review Kubernetes events: `kubectl describe pod <pod-name>`
+  </Accordion>
+</AccordionGroup>
+
+### Database Connection Issues
+
+<AccordionGroup>
+  <Accordion title="Issue: 'Unable to connect to database' errors">
+    **Cause**: Database credentials incorrect or database unreachable
+
+    **Solution**:
+    - Verify `DB_PASSWORD` is correct and matches the database user
+    - Confirm database host is reachable from the Kubernetes cluster
+    - Check network policies allow traffic to the database
+    - Test connection manually:
+      ```bash
+      kubectl exec -it <pod> -- psql -h <host> -U postgres
+      ```
+  </Accordion>
+
+  <Accordion title="Issue: 'Database migration fails' on first deployment">
+    **Cause**: Database schema initialization incomplete
+
+    **Solution**:
+    - Ensure database is fully initialized before deploying application
+    - Check database logs for migration errors
+    - Verify user has proper privileges for schema creation
+    - Run migrations manually if needed:
+      ```bash
+      kubectl exec -it <pod> -- rake db:migrate
+      ```
+  </Accordion>
+</AccordionGroup>
+
+## Authentication & Authorization Issues
+
+### WorkOS Authentication
+
+<AccordionGroup>
+  <Accordion title="Issue: 'Authentication failed' or blank login page">
+    **Cause**: WorkOS credentials incorrect or misconfigured
+
+    **Solution**:
+    - Verify `WORKOS_CLIENT_ID` matches the WorkOS dashboard value
+    - Confirm `WORKOS_AUTHKIT_DOMAIN` is correctly formatted (e.g., `your-domain.authkit.app`)
+    - Check that `WORKOS_API_KEY` is properly stored in Kubernetes secrets
+    - Verify WorkOS organization is active and AuthKit is enabled
+    - Check browser console for authentication errors
+    - Review application logs:
+      ```bash
+      kubectl logs -f <pod-name>
+      ```
+  </Accordion>
+
+  <Accordion title="Issue: 'Invalid or expired session' errors or 'key must be 32 bytes' error">
+    **Cause**: `WORKOS_COOKIE_PASSWORD` incorrect format or session key mismatch
+
+    <Warning>
+    **IMPORTANT**: `WORKOS_COOKIE_PASSWORD` requires a **32-character string**, NOT 32 bytes
+    </Warning>
+
+    **Solution**:
+    - Generate correctly using: `openssl rand -hex 16` (generates 16 bytes as 32 hex characters)
+    - ❌ **Do NOT use**: `openssl rand -base64 32` (generates 32 bytes, encodes to 44 characters - will fail)
+    - Verify the password is exactly 32 characters long
+    - Ensure the same password is used across all replicas
+    - Check that secrets are properly synced from Cloud Secret Manager
+    - Restart pods to pick up updated secrets:
+      ```bash
+      kubectl rollout restart deployment/<name>
+      ```
+  </Accordion>
+
+  <Accordion title="Issue: 'Magic Auth' not appearing as sign-in option">
+    **Cause**: AuthKit not configured with Magic Auth method
+
+    **Solution**:
+    - Enable Magic Auth in WorkOS AuthKit settings
+    - Refresh browser cache or open in incognito mode
+    - Verify AuthKit domain is correctly configured
+  </Accordion>
+
+  <Accordion title="Issue: Google Workspace OIDC sign-in fails">
+    **Cause**: Google OAuth not properly configured on GCP Project
+
+    **Solution**:
+    - Verify Google OAuth consent screen is configured
+    - Check OAuth 2.0 credentials are created and authorized for AuthKit domain
+    - Confirm `your-domain.authkit.app` is added to authorized redirect URIs
+    - Review GCP Console > APIs & Services > Credentials
+  </Accordion>
+</AccordionGroup>
+
+### CLI Authentication Issues
+
+<AccordionGroup>
+  <Accordion title="Issue: 'crew ai login' command fails">
+    **Cause**: WorkOS Connect not properly configured or OIDC middleware disabled
+
+    **Solution**:
+    - Verify `oauth.enabled: true` in Helm values
+    - Confirm WorkOS Connect is enabled in WorkOS dashboard
+    - Check that CLI can reach the authentication endpoint
+    - Review application logs for OIDC errors
+    - Try manual token generation as workaround
+  </Accordion>
+
+  <Accordion title="Issue: 'Invalid OIDC token' errors in CLI">
+    **Cause**: Token expired or WorkOS Connect endpoint misconfigured
+
+    **Solution**:
+    - Re-authenticate: `crew ai login` again
+    - Verify token expiration time is reasonable
+    - Check clock skew between CLI environment and server
+    - Confirm WorkOS Connect is properly integrated
+  </Accordion>
+</AccordionGroup>
+
+### OAuth Configuration Issues
+
+<AccordionGroup>
+  <Accordion title="Issue: 'couldn't find key OAUTH_DB_HOST in Secret' error when enabling built-in integrations">
+    **Cause**: OAuth enabled after initial deployment without providing `OAUTH_DB_HOST` secret
+
+    <Warning>
+    When enabling `oauth: true` in Helm values, you must also provide `OAUTH_DB_HOST`
+    </Warning>
+
+    **Solution**:
+
+    Add to your Kubernetes secret:
+    ```bash
+    kubectl patch secret crewai-secrets -p \
+      '{"data": {"OAUTH_DB_HOST": "'$(echo -n '10.0.0.2' | base64)'"}}'
+    ```
+
+    Replace `10.0.0.2` with your actual OAuth database host
+
+    For initial deployments, configure OAuth from the start to auto-create all required secrets
+
+    Reference: [PostgreSQL OAuth Database Configuration](https://enterprise-docs.crewai.com/reference/chart-values/postgres#param-postgres-oauth-database)
+
+    Restart deployment after updating secret:
+    ```bash
+    kubectl rollout restart deploy/crewai-web
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Network & Connectivity Issues
+
+### Ingress & Load Balancer
+
+<AccordionGroup>
+  <Accordion title="Issue: External IP remains 'pending'">
+    **Cause**: Static IP resource not provisioned or ingress misconfigured
+
+    **Solution**:
+    - Verify static IP exists in GCP:
+      ```bash
+      gcloud compute addresses list
+      ```
+    - Check ingress annotations reference correct IP name
+    - Confirm load balancer backend services are healthy
+    - Review GCP Console > Network Services > Load Balancing
+  </Accordion>
+
+  <Accordion title="Issue: 'Connection refused' when accessing application">
+    **Cause**: Service not accessible or firewall blocking traffic
+
+    **Solution**:
+    - Verify pod is running: `kubectl get pods`
+    - Check service is created: `kubectl get svc`
+    - Test internal connectivity:
+      ```bash
+      kubectl port-forward svc/<service> 8080:80
+      ```
+    - Review firewall rules in GCP Console > VPC Network > Firewall rules
+  </Accordion>
+</AccordionGroup>
+
+### DNS Resolution
+
+<AccordionGroup>
+  <Accordion title="Issue: Domain name not resolving">
+    **Cause**: DNS records not configured or propagation delay
+
+    **Solution**:
+    - Verify DNS A record points to load balancer IP
+    - Wait for DNS propagation (up to 48 hours)
+    - Test DNS:
+      ```bash
+      nslookup your-domain.com
+      # or
+      dig your-domain.com
+      ```
+    - Check GCP Cloud DNS records if using Cloud DNS
+  </Accordion>
+
+  <Accordion title="Issue: 'Invalid certificate' or SSL errors">
+    **Cause**: SSL certificate not provisioned or misconfigured
+
+    **Solution**:
+    - Verify managed certificate is created:
+      ```bash
+      kubectl get managedcertificate
+      ```
+    - Check certificate is in "Active" state
+    - Confirm domain in FrontendConfig matches certificate domains
+    - Review GCP Console > Network Services > Cloud Armor & Security Policies
+  </Accordion>
+</AccordionGroup>
+
+## Storage & Persistence Issues
+
+### Cloud Storage / S3 Access
+
+<AccordionGroup>
+  <Accordion title="Issue: 'Access Denied' when writing to storage bucket">
+    **Cause**: AWS credentials invalid or lack permissions
+
+    **Solution**:
+    - Verify `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are correct HMAC keys
+    - Confirm service account has `storage.objects.create` permission
+    - Check bucket exists and is accessible
+    - Test access:
+      ```bash
+      kubectl exec -it <pod> -- aws s3 ls s3://your-bucket/
+      ```
+  </Accordion>
+
+  <Accordion title="Issue: 'No such bucket' errors">
+    **Cause**: Bucket name wrong or not accessible from cluster
+
+    **Solution**:
+    - Verify `AWS_BUCKET` and `LOGS_BUCKET` match actual bucket names
+    - Confirm buckets exist in GCP Cloud Storage
+    - Check bucket region matches `AWS_REGION`
+    - Verify endpoint is correct: `https://storage.googleapis.com`
+  </Accordion>
+</AccordionGroup>
+
+### Volume Mounting
+
+<AccordionGroup>
+  <Accordion title="Issue: Persistent volume not mounting">
+    **Cause**: Volume not created or mount configuration incorrect
+
+    **Solution**:
+    - Check volume exists: `kubectl get pv`
+    - Verify PVC is bound: `kubectl get pvc`
+    - Check pod logs for mount errors
+    - Describe pod to see mount status:
+      ```bash
+      kubectl describe pod <pod-name>
+      ```
+  </Accordion>
+</AccordionGroup>
+
+## Container Registry Issues
+
+### GCP Service Account Authentication
+
+<AccordionGroup>
+  <Accordion title="Issue: 'ImagePullBackOff' or 'unauthorized: authentication required' when pulling images">
+    **Cause**: Container registry credentials missing, incorrect, or not properly base64-encoded
+
+    **Solution**:
+
+    **Step 1: Create GCP Service Account Key** (if not already created):
+    ```bash
+    gcloud iam service-accounts keys create sa-key.json \
+      --iam-account=<service-account-email>
+    ```
+
+    **Step 2: Base64 Encode the Key** (critical for Docker registry auth):
+    ```bash
+    cat sa-key.json | base64 -w 0 > sa-key.base64
+    # Or without line wrapping:
+    base64 sa-key.json > sa-key.base64
+    ```
+
+    **Step 3: Create Kubernetes Secret** with encoded credentials:
+    ```bash
+    kubectl create secret docker-registry gcp-registry-secret \
+      --docker-server="europe-west1-docker.pkg.dev" \
+      --docker-username="_json_key_base64" \
+      --docker-password="$(cat sa-key.base64)"
+    ```
+
+    **Step 4: Reference Secret in Pod Spec** (Helm values):
+    ```yaml
+    image:
+      registries:
+        - host: "europe-west1-docker.pkg.dev"
+          username: "_json_key_base64"
+          password: "[REDACTED]"  # Base64-encoded GCP service account JSON
+    ```
+
+    <Warning>
+    **CRITICAL SECURITY CONSIDERATIONS**:
+    - Never commit `sa-key.json` to version control - it provides full GCP access
+    - Never store raw JSON in Helm values files - use Cloud Secret Manager or Kubernetes secrets
+    - Rotate keys regularly - GCP recommends quarterly rotation minimum
+    - Delete old keys after rotation to prevent compromise
+    - Use service account impersonation when possible instead of key-based authentication
+    - Restrict key permissions - grant only necessary roles (e.g., `roles/storage.objectViewer` for artifact registry)
+    </Warning>
+
+    <Info>
+    **Secure Key Management Workflow**:
+
+    ```bash
+    # 1. Create key (temporary file only)
+    gcloud iam service-accounts keys create /tmp/sa-key.json \
+      --iam-account=<service-account-email>
+
+    # 2. Base64 encode and store in Cloud Secret Manager
+    gcloud secrets create gcp-registry-key \
+      --data-file=/tmp/sa-key.json
+
+    # 3. Immediately delete local copy
+    shred -vfz -n 10 /tmp/sa-key.json
+
+    # 4. Reference secret in Kubernetes (do NOT use raw JSON)
+    # Use external-secrets-operator or sealed-secrets to sync from Cloud Secret Manager
+    ```
+    </Info>
+  </Accordion>
+
+  <Accordion title="Issue: 'access denied' when pulling from private registry">
+    **Cause**: Service account lacks necessary permissions
+
+    **Solution**:
+    - Verify service account has `roles/artifactregistry.reader` role
+    - Check:
+      ```bash
+      gcloud projects get-iam-policy <project-id>
+      ```
+    - Grant if missing:
+      ```bash
+      gcloud projects add-iam-policy-binding <project-id> \
+        --member=serviceAccount:<sa-email> \
+        --role=roles/artifactregistry.reader
+      ```
+  </Accordion>
+</AccordionGroup>
+
+## Performance & Resource Issues
+
+### CPU & Memory
+
+<AccordionGroup>
+  <Accordion title="Issue: Pods getting OOMKilled (out of memory)">
+    **Cause**: Application memory usage exceeds resource limits
+
+    **Solution**:
+    - Increase memory limits in Helm values
+    - Profile application memory usage
+    - Check for memory leaks in logs
+    - Increase replica count to distribute load
+  </Accordion>
+
+  <Accordion title="Issue: High CPU usage or slow response times">
+    **Cause**: Insufficient CPU allocation or application bottleneck
+
+    **Solution**:
+    - Increase CPU limits in Helm values
+    - Enable horizontal pod autoscaling
+    - Profile application CPU usage
+    - Check for database query performance issues
+  </Accordion>
+</AccordionGroup>
+
+### Scaling Issues
+
+<AccordionGroup>
+  <Accordion title="Issue: Auto-scaling not working">
+    **Cause**: HPA (Horizontal Pod Autoscaler) not configured or metrics unavailable
+
+    **Solution**:
+    - Verify HPA is created: `kubectl get hpa`
+    - Check metrics are available:
+      ```bash
+      kubectl top nodes
+      kubectl top pods
+      ```
+    - Ensure metrics-server is installed:
+      ```bash
+      kubectl get deployment metrics-server -n kube-system
+      ```
+    - Review HPA status:
+      ```bash
+      kubectl describe hpa <hpa-name>
+      ```
+  </Accordion>
+</AccordionGroup>
+
+## Logging & Monitoring
+
+### Log Collection Issues
+
+<AccordionGroup>
+  <Accordion title="Issue: Application logs not appearing in Cloud Logging">
+    **Cause**: Log sink not configured or permissions missing
+
+    **Solution**:
+    - Verify Stackdriver/Cloud Logging is enabled
+    - Check log sink filters are correct
+    - Confirm service account has `logging.logEntries.create` permission
+    - Test logging locally:
+      ```bash
+      kubectl logs -f <pod-name>
+      ```
+  </Accordion>
+</AccordionGroup>
+
+### Metrics & Monitoring
+
+<AccordionGroup>
+  <Accordion title="Issue: No metrics visible in monitoring dashboard">
+    **Cause**: Metrics not being collected or exported
+
+    **Solution**:
+    - Verify monitoring agent is running
+    - Check metrics endpoints are accessible
+    - Confirm Prometheus or equivalent scraper is configured
+    - Review monitoring configuration in values file
+  </Accordion>
+</AccordionGroup>
+
+## Kubernetes Issues
+
+### Pod Issues
+
+<AccordionGroup>
+  <Accordion title="Issue: Pods stuck in 'Pending' state">
+    **Cause**: Insufficient resources or node issues
+
+    **Solution**:
+    - Check node availability: `kubectl get nodes`
+    - Describe pod to see pending reason:
+      ```bash
+      kubectl describe pod <pod-name>
+      ```
+    - Check resource requests vs available resources
+    - Scale up node pool if needed
+  </Accordion>
+
+  <Accordion title="Issue: Pods crashing with 'CrashLoopBackOff'">
+    **Cause**: Application startup failure or configuration error
+
+    **Solution**:
+    - Check pod logs:
+      ```bash
+      kubectl logs <pod-name>
+      ```
+    - Check previous logs if container restarted:
+      ```bash
+      kubectl logs <pod-name> --previous
+      ```
+    - Verify all environment variables are set correctly
+    - Test application locally with same configuration
+  </Accordion>
+</AccordionGroup>
+
+### Secret Management
+
+<AccordionGroup>
+  <Accordion title="Issue: Environment variables not populated from secrets">
+    **Cause**: Secret not created or not mounted correctly
+
+    **Solution**:
+    - Verify secret exists: `kubectl get secrets`
+    - Check secret data:
+      ```bash
+      kubectl describe secret <secret-name>
+      ```
+    - Confirm secret is referenced in pod spec
+    - Verify pod has restarted after secret creation
+    - Check YAML syntax for secret mounting
+  </Accordion>
+
+  <Accordion title="Issue: 'Secret key not found' errors">
+    **Cause**: Secret key name doesn't match environment variable reference
+
+    **Solution**:
+    - List secret keys:
+      ```bash
+      kubectl describe secret <secret-name>
+      ```
+    - Verify key names match pod environment variable references
+    - Check for typos in key names
+    - Recreate secret if keys are incorrect
+  </Accordion>
+</AccordionGroup>
+
+## Image Building Issues
+
+### BuildKit/Image Build Failures
+
+<AccordionGroup>
+  <Accordion title="Issue: Buildkit pod crashes or enters CrashLoopBackOff">
+    **Cause**: Container image building failures, resource constraints, or configuration issues
+
+    **Solution**:
+
+    Check buildkit pod logs:
+    ```bash
+    kubectl logs deploy/crewai-buildkit
+    kubectl logs deploy/crewai-buildkit --previous
+    ```
+
+    Check pod resource requests vs available resources:
+    ```bash
+    kubectl describe pod <buildkit-pod-name>
+    ```
+
+    Other checks:
+    - Verify registry credentials are accessible to buildkit pod
+    - Check for disk space issues:
+      ```bash
+      kubectl exec -it deploy/crewai-buildkit -- df -h
+      ```
+  </Accordion>
+
+  <Accordion title="Issue: Image fails to build or push to registry">
+    **Cause**: Build failure, registry authentication, or network connectivity
+
+    **Solution**:
+
+    Execute into buildkit pod for debugging:
+    ```bash
+    kubectl exec -it deploy/crewai-buildkit -- /bin/bash
+    ```
+
+    Verify registry credentials from within pod
+
+    Check network connectivity to registry:
+    ```bash
+    kubectl exec deploy/crewai-buildkit -- curl -I https://europe-west1-docker.pkg.dev
+    ```
+
+    Other steps:
+    - Review buildkit logs for specific error messages
+    - Restart buildkit deployment if hung:
+      ```bash
+      kubectl rollout restart deploy/crewai-buildkit
+      ```
+  </Accordion>
+
+  <Accordion title="Issue: Feature flags not recognized or disabled">
+    **Cause**: Feature flag configuration not loaded or overridden
+
+    **Solution**:
+
+    Check feature flag status from Rails runner:
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rails runner 'Flipper.enabled?(:flag_name)'
+    ```
+
+    Verify flag is enabled in Flipper configuration
+
+    Check Rails cache is cleared after flag changes:
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rails runner 'Rails.cache.clear'
+    ```
+
+    Restart web deployment to pick up flag changes:
+    ```bash
+    kubectl rollout restart deploy/crewai-web
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Application Features Issues
+
+### Crew Studio LLM Compatibility
+
+<AccordionGroup>
+  <Accordion title="Issue: Cannot select Gemini or other specific LLM models in Crew Studio">
+    **Cause**: LLM model not enabled for Crew Studio or incompatible model version
+
+    <Info>
+    Use models equivalent to **GPT-4 or higher** for best performance with Crew Studio.
+    </Info>
+
+    **Solution**:
+    - Verify the LLM is enabled in your LLM Connection configuration
+    - Compatible LLMs must be:
+      - Enabled in your LLM Connection
+      - Compatible with Crew Studio (check CrewAI documentation for supported models)
+      - Configured with sufficient context windows and capabilities
+
+    **Supported models typically include**:
+    - OpenAI: GPT-4, GPT-4 Turbo, GPT-4o
+    - Other enterprise-grade LLMs equivalent to GPT-4
+
+    <Warning>
+    Some models like Gemini may require additional configuration or may not be fully supported in the current version. Check CrewAI release notes or support documentation for LLM compatibility list.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## User and Data Management
+
+### Removing Users for WorkOS Integration Testing
+
+When transitioning to WorkOS authentication, you may need to remove existing test users to ensure proper WorkOS sign-in flow and user provisioning.
+
+<AccordionGroup>
+  <Accordion title="Issue: Need to remove user account to test WorkOS sign-in">
+    **Cause**: Testing WorkOS authentication or cleaning up development/test users
+
+    **Solution**:
+
+    **Step 1: List all users**:
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rails runner \
+      'User.select(:id, :email).each { |u| puts "ID: #{u.id} | Email: #{u.email}" }'
+    ```
+
+    **Step 2: Delete single user by email**:
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rails runner \
+      "User.find_by_email('user@example.com')&.destroy!"
+    ```
+
+    **Step 3: If deletion fails with foreign key constraint error**:
+
+    <Warning>
+    Error: `PG::ForeignKeyViolation: ERROR: update or delete on table "users" violates foreign key constraint`
+
+    Cause: User has associated chat_sessions that must be deleted first
+    </Warning>
+
+    Use the deep clean method to remove user and all related data:
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rails runner '
+      user = User.find_by(email: "user@example.com")
+      if user
+        session_ids = ChatSession.where(user_id: user.id).pluck(:id)
+        ChatMessage.where(chat_session_id: session_ids).delete_all
+        ChatSession.where(id: session_ids).delete_all
+        user.destroy!
+        puts "Deep clean complete: User, Sessions, and Messages deleted."
+      else
+        puts "User not found"
+      end
+      '
+    ```
+  </Accordion>
+
+  <Accordion title="Issue: Add user as owner after WorkOS setup">
+    **Cause**: Provisioning new admin accounts or assigning ownership
+
+    **Solution**:
+
+    **Create owner in primary organization** (org_id=1):
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rake factory:setup_permissions_defaults \
+      'factory:add_owner[1,admin@example.com]'
+    ```
+
+    **Create owner in secondary organization** (org_id=2):
+    ```bash
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rake factory:setup_permissions_defaults \
+      'factory:add_owner[2,admin@example.com]'
+    ```
+  </Accordion>
+
+  <Accordion title="Issue: Clean up test users in bulk">
+    **Cause**: Resetting development environment after testing
+
+    **Solution**:
+    ```bash
+    # Delete all users except admins (example pattern)
+    kubectl exec -it deploy/crewai-web -- \
+      bundle exec rails runner '
+      User.where.not(email: ["admin@example.com", "protected@example.com"]).destroy_all
+      '
+    ```
+
+    <Warning>
+    These operations are destructive and cannot be easily undone. Ensure backups are current before bulk deletions.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+### Debug Commands Reference
+
+<Tip>
+Quick reference for common debugging commands
+</Tip>
+
+```bash
+# View pod logs
+kubectl logs <pod-name>
+kubectl logs -f <pod-name>  # Follow logs
+kubectl logs <pod-name> --previous  # View previous container logs
+
+# Describe resources for detailed status
+kubectl describe pod <pod-name>
+kubectl describe deployment <deployment-name>
+kubectl describe svc <service-name>
+
+# Execute commands in pod
+kubectl exec -it <pod-name> -- /bin/bash
+kubectl exec -it <pod-name> -- env  # Check environment variables
+
+# Check resource status
+kubectl get pods
+kubectl get svc
+kubectl get pvc
+kubectl get secrets
+
+# View Helm release status
+helm status <release-name>
+helm get values <release-name>  # View current values
+
+# Port forwarding for testing
+kubectl port-forward svc/<service-name> 8080:80
+```
+
+### Support Resources
+
+<CardGroup cols={2}>
+  <Card title="GCP Setup Issues" icon="cloud" href="/crewai/gcp-setup">
+    See GCP Setup Guide for infrastructure-related issues
+  </Card>
+  <Card title="Installation Issues" icon="download" href="/crewai/install">
+    Review Installation Guide for deployment issues
+  </Card>
+  <Card title="Third-Party Integrations" icon="plug" href="/crewai/third-party">
+    See Third-Party Integrations guide
+  </Card>
+  <Card title="Kubernetes Basics" icon="dharmachakra" href="https://kubernetes.io/docs/reference/kubectl/cheatsheet/">
+    kubectl Cheat Sheet from Kubernetes docs
+  </Card>
+</CardGroup>
+
+<Info>
+**Additional Resources**:
+- [Helm Documentation](https://helm.sh/docs/)
+- [Google Kubernetes Engine Documentation](https://cloud.google.com/kubernetes-engine/docs)
+</Info>
+
+### Reporting Issues
+
+When reporting issues, include:
+- Complete error messages and stack traces
+- Output of relevant kubectl commands
+- Kubernetes event logs
+- Application logs (sanitized for sensitive data)
+- Configuration details (without secrets)
+- CrewAI version and deployment environment

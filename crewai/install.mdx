@@ -65,7 +65,8 @@ You'll need:
 
 Open Google Cloud Console and launch Cloud Shell, then set your project:
 
-```bash
+<CodeGroup>
+```bash Cloud Shell / Unix
 # Set your GCP project ID
 export PROJECT_ID="your-gcp-project-id"
 
@@ -73,6 +74,16 @@ export PROJECT_ID="your-gcp-project-id"
 gcloud config set project $PROJECT_ID
 gcloud config get-value project
 ```
+
+```powershell Local Windows
+# Set your GCP project ID
+$PROJECT_ID = "your-gcp-project-id"
+
+# Verify the project is set
+gcloud config set project $PROJECT_ID
+gcloud config get-value project
+```
+</CodeGroup>
 
 <Check>
 Your Cloud Shell will now use this project for all subsequent commands.
@@ -156,28 +167,47 @@ Access the CrewAI Enterprise Portal to configure and retrieve your installation 
   </Step>
 </Steps>
 
-The portal provides a complete installation sequence in this format:
+The portal provides a complete installation sequence with the following steps:
 
-```
-1. Select a version
-   App Version: [Version Selection]
+<Steps>
+  <Step title="Select a Version">
+    Choose your desired app version from the portal's version selector.
+  </Step>
 
-2. Export credentials and log in
-   ✓ export AUTH_TOKEN=<token>
-   helm registry login registry.crewai.com --username mischa.vanoijen@konecta.com --password $AUTH_TOKEN
+  <Step title="Export Credentials and Log In">
+    Copy and run the authentication commands provided by the portal:
 
-3. Create values override file
-   Create a my-values.yaml file to customize your installation.
+    ```bash
+    export AUTH_TOKEN=<token>
+    helm registry login registry.crewai.com --username mischa.vanoijen@konecta.com --password $AUTH_TOKEN
+    ```
+  </Step>
 
-4. Install preflight plugin (on GCP Cloud Shell)
-   curl https://krew.sh/preflight | bash
+  <Step title="Create Values Override File">
+    Create a `my-values.yaml` file to customize your installation (detailed in Step 4 below).
+  </Step>
 
-5. Install the chart
-   helm install crewai-platform oci://registry.crewai.com/crewai/stable/crewai-platform --version 0.3.1 --values my-values.yaml
-```
+  <Step title="Install Preflight Plugin">
+    Install the preflight validation plugin on GCP Cloud Shell:
+
+    ```bash
+    curl https://krew.sh/preflight | bash
+    ```
+  </Step>
+
+  <Step title="Install the Chart">
+    Run the Helm installation command with your specific version:
+
+    ```bash
+    helm install crewai-platform oci://registry.crewai.com/crewai/stable/crewai-platform \
+      --version 0.3.1 \
+      --values my-values.yaml
+    ```
+  </Step>
+</Steps>
 
 <Info>
-Copy the exact commands provided by the portal, as they contain your unique authentication token and version-specific installation details.
+**Important:** Copy the exact commands provided by the portal, as they contain your unique authentication token and version-specific installation details.
 </Info>
 
 ### Step 4: Prepare Configuration File (my-values.yaml)
@@ -191,32 +221,189 @@ Use the values template provided by the enterprise portal as a starting point. H
   
   <Step title="Customize Your Configuration">
     Edit the template with your specific settings:
-    
-    ```bash
+
+    <CodeGroup>
+    ```bash Cloud Shell / Unix
     # Navigate to your metadata directory
     cd ~/crewai-deployment/$PROJECT_ID/metadata
-    
+
     # Open in editor (nano or vim)
     nano my-values.yaml
-    
-    # Replace the following with your actual values:
-    # - APPLICATION_HOST: Your domain name
-    # - DB_HOST: Your Cloud SQL instance private IP
-    # - GCS_BUCKET: Your Cloud Storage bucket name
-    # - Authentication provider details (Entra ID, Google OAuth, etc.)
-    # - All secrets with actual values
     ```
-    
+
+    ```powershell Windows
+    # Navigate to your metadata directory
+    cd ~\crewai-deployment\$PROJECT_ID\metadata
+
+    # Open in editor
+    notepad my-values.yaml
+    ```
+    </CodeGroup>
+
     <Warning>
     **Security: Secrets Management**
 
     **NEVER commit `my-values.yaml` to version control if it contains secrets!**
-    
+
     Instead:
     1. Store secrets in Google Cloud Secret Manager
     2. Use CI/CD pipeline to inject secrets
     3. Or create a `.gitignore` entry and manage separately
     </Warning>
+  </Step>
+
+  <Step title="Key Configuration Parameters">
+    Configure these essential parameters in your `my-values.yaml`:
+
+    ### Application Configuration
+
+    <ParamField path="envVars.APPLICATION_HOST" type="string" required>
+      Your domain name (FQDN) for the CrewAI instance
+
+      **Example:** `dev.crewai.konecta.com`
+    </ParamField>
+
+    <ParamField path="envVars.AUTH_PROVIDER" type="string" required>
+      Authentication provider to use
+
+      **Options:** `workos`, `entra_id`, `google`, `local`
+    </ParamField>
+
+    ### Database Configuration
+
+    <ParamField path="envVars.DB_HOST" type="string" required>
+      Private IP address of your Cloud SQL PostgreSQL instance
+
+      **Example:** `10.29.0.2`
+    </ParamField>
+
+    <ParamField path="envVars.DB_PORT" type="string" default="5432">
+      PostgreSQL database port
+    </ParamField>
+
+    <ParamField path="envVars.DB_USER" type="string" default="postgres">
+      Database username
+    </ParamField>
+
+    <ParamField path="secrets.DB_PASSWORD" type="string" required>
+      Database password (store in Secret Manager)
+    </ParamField>
+
+    ### Storage Configuration (S3-compatible GCS)
+
+    <ParamField path="envVars.STORAGE_SERVICE" type="string" default="amazon">
+      Storage service type (use "amazon" for S3-compatible GCS)
+    </ParamField>
+
+    <ParamField path="envVars.AWS_REGION" type="string" required>
+      GCP region for Cloud Storage buckets
+
+      **Example:** `europe-west1`
+    </ParamField>
+
+    <ParamField path="envVars.AWS_BUCKET" type="string" required>
+      Main data storage bucket name
+
+      **Example:** `your-project-crewai-data`
+    </ParamField>
+
+    <ParamField path="envVars.LOGS_BUCKET" type="string" required>
+      Logs storage bucket name
+
+      **Example:** `your-project-crewai-logs`
+    </ParamField>
+
+    <ParamField path="envVars.AWS_ENDPOINT" type="string" default="https://storage.googleapis.com">
+      S3-compatible endpoint for GCS
+    </ParamField>
+
+    <ParamField path="secrets.AWS_ACCESS_KEY_ID" type="string" required>
+      GCS HMAC access key ID (from service account)
+    </ParamField>
+
+    <ParamField path="secrets.AWS_SECRET_ACCESS_KEY" type="string" required>
+      GCS HMAC secret access key
+    </ParamField>
+
+    ### WorkOS Authentication
+
+    <ParamField path="envVars.WORKOS_CLIENT_ID" type="string" required>
+      WorkOS client ID from your WorkOS dashboard
+
+      **Format:** `client_XXXXXXXXXXXXXXXXXXXXXXXX`
+    </ParamField>
+
+    <ParamField path="envVars.WORKOS_AUTHKIT_DOMAIN" type="string" required>
+      WorkOS AuthKit domain
+
+      **Example:** `your-domain.authkit.app`
+    </ParamField>
+
+    <ParamField path="secrets.WORKOS_API_KEY" type="string" required>
+      WorkOS API key (store in Secret Manager)
+    </ParamField>
+
+    <ParamField path="secrets.WORKOS_COOKIE_PASSWORD" type="string" required>
+      32-character random string for session encryption
+
+      **Generate with:** `openssl rand -hex 16`
+    </ParamField>
+
+    ### Container Registry
+
+    <ParamField path="envVars.CREW_IMAGE_REGISTRY_OVERRIDE" type="string">
+      Custom container registry for CrewAI images
+
+      **Example:** `europe-west1-docker.pkg.dev/your-project/crewai-enterprise`
+    </ParamField>
+
+    <ParamField path="image.registries[].host" type="string" required>
+      Container registry hostname
+
+      **Example:** `europe-west1-docker.pkg.dev`
+    </ParamField>
+
+    <ParamField path="image.registries[].username" type="string" default="_json_key_base64">
+      Registry authentication username (use `_json_key_base64` for GCP)
+    </ParamField>
+
+    <ParamField path="image.registries[].password" type="string" required>
+      Base64-encoded GCP service account JSON key
+    </ParamField>
+
+    ### Web Service
+
+    <ParamField path="web.replicaCount" type="number" default="1">
+      Number of web server replicas
+
+      **Development:** `1` | **Production:** `3`
+    </ParamField>
+
+    <ParamField path="web.ingress.enabled" type="boolean" default="true">
+      Enable ingress controller
+    </ParamField>
+
+    <ParamField path="web.ingress.host" type="string" required>
+      Ingress hostname (should match APPLICATION_HOST)
+    </ParamField>
+
+    ### Worker Service
+
+    <ParamField path="worker.replicaCount" type="number" default="1">
+      Number of background worker replicas
+
+      **Development:** `1` | **Production:** `3`
+    </ParamField>
+
+    ### OAuth Configuration
+
+    <ParamField path="oauth.enabled" type="boolean" default="false">
+      Enable OAuth for third-party integrations
+    </ParamField>
+
+    <ParamField path="secrets.OAUTH_DB_HOST" type="string">
+      OAuth database host (required if oauth.enabled = true)
+    </ParamField>
   </Step>
 
   <Step title="Reference: Sample Configuration Structure">
@@ -304,11 +491,6 @@ Use the values template provided by the enterprise portal as a starting point. H
           kubernetes.io/ingress.class: "gce"
           networking.gke.io/v1beta1.FrontendConfig: "gcp-sslpolicy"
     
-    # NOTE: The static IP address resource must be provisioned in GCP before installation.
-    # See the [GCP Infrastructure Setup Guide](/crewai/gcp-setup) for details on creating:
-    # - Compute Address resources (static external IPs)
-    # - SSL policies and managed certificates
-    
     # Background Job Processing
     worker:
       # DEVELOPMENT: Single worker for cost savings
@@ -327,6 +509,10 @@ Use the values template provided by the enterprise portal as a starting point. H
     oauth:
       enabled: true
     ```
+
+    <Note>
+    **Infrastructure Note**: The static IP address resource must be provisioned in GCP before installation. See the [GCP Infrastructure Setup Guide](/crewai/gcp-setup) for details on creating Compute Address resources, SSL policies, and managed certificates.
+    </Note>
   </Step>
 </Steps>
 
@@ -347,8 +533,16 @@ Use the values template provided by the enterprise portal as a starting point. H
     # Resources: Minimal (adequate for testing/validation)
     # Scaling: Manual - adjust replicaCount as needed
     ```
+
+    <Tip>
+    Development environments typically use:
+    - Single replicas for all services
+    - Smaller machine types (e2-small, e2-medium)
+    - Reduced resource limits
+    - Shared infrastructure when possible
+    </Tip>
   </Tab>
-  
+
   <Tab title="Production">
     ```yaml
     # Production Configuration (High Availability)
@@ -369,6 +563,15 @@ Use the values template provided by the enterprise portal as a starting point. H
     # Resources: Production-grade (CPU/Memory allocations)
     # Scaling: Auto-scaling enabled
     ```
+
+    <Tip>
+    Production environments should use:
+    - Multiple replicas (minimum 3 for high availability)
+    - Larger machine types (e2-standard or higher)
+    - Resource requests and limits properly configured
+    - Horizontal Pod Autoscaling (HPA) enabled
+    - Separate infrastructure from development
+    </Tip>
   </Tab>
 </Tabs>
 
@@ -505,14 +708,18 @@ Deploy the CrewAI Platform using the Helm command from the portal:
   </Step>
   
   <Step title="Monitor Installation Progress">
-    ```bash
+    <CodeGroup>
+    ```bash Watch Pods
     # Watch pod creation in real-time
     kubectl get pods -w
-    
+    ```
+
+    ```bash Check Status
     # Or in another Cloud Shell tab:
     kubectl get pods -l app.kubernetes.io/name=crewai-platform
     ```
-    
+    </CodeGroup>
+
     <Info>
     **Installation Time**
 
@@ -543,18 +750,31 @@ To upgrade to a newer version of CrewAI Platform:
 
 <Steps>
   <Step title="Prepare for Upgrade">
-    ```bash
+    <CodeGroup>
+    ```bash Cloud Shell / Unix
     # Navigate to your metadata directory
     cd ~/crewai-deployment/$PROJECT_ID/metadata
-    
+
     # Backup your current values file
     cp my-values.yaml my-values.yaml.backup.$(date +%Y%m%d-%H%M%S)
-    
+
     # Check available chart versions
     helm search repo registry.crewai.com/crewai/stable --versions
     ```
+
+    ```powershell Windows
+    # Navigate to your metadata directory
+    cd ~\crewai-deployment\$PROJECT_ID\metadata
+
+    # Backup your current values file
+    Copy-Item my-values.yaml "my-values.yaml.backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+
+    # Check available chart versions
+    helm search repo registry.crewai.com/crewai/stable --versions
+    ```
+    </CodeGroup>
   </Step>
-  
+
   <Step title="Review Changes">
     ```bash
     # Preview what will change
@@ -563,6 +783,10 @@ To upgrade to a newer version of CrewAI Platform:
       --values my-values.yaml \
       --dry-run --debug
     ```
+
+    <Tip>
+    Review the output carefully to understand what resources will be modified during the upgrade.
+    </Tip>
   </Step>
   
   <Step title="Execute Upgrade">
@@ -599,21 +823,21 @@ Confirm your installation is successful:
     All pods should show `Running` status.
   </Card>
   
-  <Card title="Check Services" icon="network">
+  <Card title="Check Services" icon="network-wired">
     ```bash
     kubectl get svc -l app.kubernetes.io/name=crewai-platform
     ```
     Services should have ClusterIP or LoadBalancer assigned.
   </Card>
-  
-  <Card title="View Logs" icon="file-text">
+
+  <Card title="View Logs" icon="file-lines">
     ```bash
     kubectl logs -l app.kubernetes.io/name=crewai-platform --tail=100
     ```
     Look for successful startup messages.
   </Card>
-  
-  <Card title="Check Resource Usage" icon="bar-chart">
+
+  <Card title="Check Resource Usage" icon="chart-simple">
     ```bash
     kubectl top pods
     kubectl top nodes
@@ -661,48 +885,61 @@ Confirm your installation is successful:
     ```
   </Accordion>
   
-  <Accordion title="Database Connection Errors" icon="database">
+  <Accordion title="Database Connection Errors">
     ```bash
     # Test Cloud SQL connectivity from pod
     kubectl exec -it <POD_NAME> -- psql \
       -h $DB_HOST \
       -U $DB_USER \
       -d $POSTGRES_DB
-    
+
     # Check firewall rules
     gcloud compute firewall-rules list --filter="name~'gke'"
-    
+
     # For Cloud SQL, verify Private IP connectivity
     gcloud sql instances describe crewai-db --format='get(ipAddresses)'
     ```
+
+    **Common Issues:**
+    - Private IP not enabled on Cloud SQL instance
+    - VPC peering not configured correctly
+    - Firewall rules blocking GKE to Cloud SQL traffic
   </Accordion>
   
-  <Accordion title="Storage Issues" icon="database">
+  <Accordion title="Storage Issues">
     ```bash
     # Check persistent volumes
     kubectl get pv
     kubectl get pvc
-    
+
     # Describe problematic PVC
     kubectl describe pvc <PVC_NAME>
-    
+
     # Check storage class
     kubectl get storageclass standard
     ```
+
+    <Tip>
+    Ensure your GKE cluster has the appropriate IAM permissions to create persistent disks in your project.
+    </Tip>
   </Accordion>
   
-  <Accordion title="Generate Support Bundle" icon="wrench">
+  <Accordion title="Generate Support Bundle">
     If you need help from CrewAI support, generate a diagnostic bundle:
-    
+
     ```bash
     # Install support-bundle plugin (if not already done)
     kubectl krew install support-bundle
-    
+
     # Generate the bundle
     kubectl support-bundle --load-cluster-specs
-    
+
     # Upload the resulting .tar.gz file to CrewAI support
     ```
+
+    <Warning>
+    **Sanitize Sensitive Data**: Before sharing the support bundle, review it for any sensitive information like passwords or API keys.
+    </Warning>
   </Accordion>
 </AccordionGroup>
 
@@ -710,7 +947,8 @@ Confirm your installation is successful:
 
 Keep records of your installation:
 
-```bash
+<CodeGroup>
+```bash Cloud Shell / Unix
 # Save installation timestamp
 echo "Installation Date: $(date)" >> metadata/installation.log
 
@@ -725,6 +963,24 @@ kubectl cluster-info dump --output-directory=metadata/logs/cluster-dump-$(date +
 helm list --all-namespaces > metadata/logs/helm-releases.txt
 kubectl describe nodes > metadata/logs/nodes-info.txt
 ```
+
+```powershell Windows
+# Save installation timestamp
+"Installation Date: $(Get-Date)" | Out-File -Append metadata\installation.log
+
+# Backup your configuration
+cd ~\crewai-deployment\$PROJECT_ID
+Compress-Archive -Path metadata\* -DestinationPath "metadata\backups\crewai-config-$(Get-Date -Format 'yyyyMMdd-HHmmss').zip"
+
+# Save Helm release information
+helm list --all-namespaces | Out-File metadata\logs\helm-releases.txt
+kubectl describe nodes | Out-File metadata\logs\nodes-info.txt
+```
+</CodeGroup>
+
+<Note>
+Regularly backup your configuration files and keep a history of changes for rollback purposes.
+</Note>
 
 ## 🎯 Next Steps
 
@@ -767,22 +1023,22 @@ Your CrewAI Platform is now installed on Google Cloud. Proceed to the [Post-Inst
     Complete CrewAI installation documentation
   </Card>
   
-  <Card title="Configuration Guide" icon="settings" href="https://enterprise-docs.crewai.com/configuration/configuration">
+  <Card title="Configuration Guide" icon="gear" href="https://enterprise-docs.crewai.com/configuration/configuration">
     Detailed configuration patterns and examples
   </Card>
-  
+
   <Card title="Post-Installation Setup" icon="clipboard-check" href="/crewai/post-install">
     Complete initialization and access setup
   </Card>
-  
-  <Card title="Troubleshooting Guide" icon="help-circle" href="https://enterprise-docs.crewai.com/troubleshooting">
+
+  <Card title="Troubleshooting Guide" icon="triangle-exclamation" href="/crewai/troubleshooting">
     Common issues and solutions
   </Card>
-  
+
   <Card title="Customer Portal" icon="users" href="https://enterprise.crewai.com/crewai">
     Access credentials and release notes
   </Card>
-  
+
   <Card title="Helm Repository" icon="box" href="https://registry.crewai.com">
     Official Helm chart repository
   </Card>

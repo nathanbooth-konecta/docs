@@ -48,3 +48,5 @@ secrets/
 *.crt
 service-account-*.json
 
+# Claude
+.claude/

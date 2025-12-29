@@ -5,16 +5,44 @@ description: Comprehensive overview of the Google Cloud architecture for Agentic
 
 # Architecture Overview
 
+<Tip>
+Before diving into the architecture details, ensure you've reviewed the [Prerequisites](/developer-guide/prerequisites) and understand the foundational concepts of Google Cloud Platform and Kubernetes.
+</Tip>
+
 ## Executive Summary and Strategic Alignment
-The rapid evolution of generative AI agents necessitates a robust, scalable, and secure infrastructure capable of supporting autonomous workflows. This design details the architectural blueprint for deploying a CrewAI enterprise automation platform on Google Kubernetes Engine (GKE), strictly adhering to the [Konecta Enterprise Architecture Blueprint](https://docs.google.com/document/d/1BHrjf6wcxGR32UsjwrO2GGFEmo7eB8bGCjchllTLThI). The proposed solution addresses the requirements for a multi-environment deployment (Development, Staging, Production) and provides a specific, secure mechanism for direct internet access secured using Cloud Armor and IAM integration, operating as a governed exception to the standard connectivity model.
 
-The Konecta Cloud Adoption Program outlines a transformative initiative to modernize IT operations, emphasizing operational efficiency, security, resilience, and innovation. The deployment of CrewAI,  framework for orchestrating role-playing AI agents-directly supports the goal of leveraging Google Cloud's capabilities in data analytics and AI to support business goals. However, the dynamic and often unpredictable nature of autonomous agents introduces specific challenges regarding network egress, identity management, and state persistence that must be reconciled with Konecta's rigid governance standards.
+The rapid evolution of generative AI agents necessitates a robust, scalable, and secure infrastructure capable of supporting autonomous workflows. This design details the architectural blueprint for deploying a CrewAI enterprise automation platform on Google Kubernetes Engine (GKE), strictly adhering to the [Konecta Enterprise Architecture Blueprint](https://docs.google.com/document/d/1BHrjf6wcxGR32UsjwrO2GGFEmo7eB8bGCjchllTLThI).
 
-This architecture is founded on the Standard Global Landing Zone principles defined by Konecta. It leverages a Hub-and-Spoke network topology to ensure isolation, ** TBC! Keycloak for centralized identity federation **, and a Zero-Trust security model enforced via Google Cloud’s Identity-Aware Proxy (IAP). By mapping the CrewAI components to Konecta’s standardized naming conventions, resource hierarchy, and infrastructure-as-code (IaC) mandates, this report provides a comprehensive blueprint for implementation
+<Warning>
+**Governed Exception to Standard Connectivity Model**
+
+The proposed solution provides a specific, secure mechanism for direct internet access secured using Cloud Armor and IAM integration, operating as a **governed exception** to the standard connectivity model. This requires explicit approval and ongoing compliance monitoring.
+</Warning>
+
+The Konecta Cloud Adoption Program outlines a transformative initiative to modernize IT operations, emphasizing operational efficiency, security, resilience, and innovation. The deployment of CrewAI, a framework for orchestrating role-playing AI agents, directly supports the goal of leveraging Google Cloud's capabilities in data analytics and AI to support business goals. However, the dynamic and often unpredictable nature of autonomous agents introduces specific challenges regarding network egress, identity management, and state persistence that must be reconciled with Konecta's rigid governance standards.
+
+<Info>
+**Pending Architecture Decision**
+
+**Keycloak for centralized identity federation** - This component is still under review and will be finalized in the next architecture iteration.
+</Info>
+
+This architecture is founded on the Standard Global Landing Zone principles defined by Konecta. It leverages a Hub-and-Spoke network topology to ensure isolation, and a Zero-Trust security model enforced via Google Cloud's Identity-Aware Proxy (IAP). By mapping the CrewAI components to Konecta's standardized naming conventions, resource hierarchy, and infrastructure-as-code (IaC) mandates, this report provides a comprehensive blueprint for implementation.
 
 The following analysis proceeds through the layers of the architecture: Governance, Networking, Compute, Security, and Operations. Each section dissects the specific Konecta principles involved, identifies the technical implementation details for CrewAI, and provides deep strategic insights into the implications of these design choices.
 
 ## Architecture Diagram
+
+<Note>
+**Interactive Diagram Guide**
+
+The diagram below illustrates the multi-region hub-and-spoke architecture with:
+- **Pink circles** (⚪): Connection hubs joining multiple components
+- **Flow direction**: Traffic flows from top (Internet/Users) down through regions to services
+- **Reading order**: Follow the numbered sections from 1 (Internet) → 6 (Operations)
+
+The architecture supports high availability across multiple regions with centralized security controls.
+</Note>
 
 ```mermaid
 graph TD
@@ -114,170 +142,500 @@ graph TD
 
 ## Core Components
 
-### 1. 🌐 Global Ingress and Edge Security
-These components handle traffic entry, global routing, and initial security enforcement at the network edge.
+<Tabs>
+  <Tab title="🌐 Edge Security">
+    ### Global Ingress and Edge Security
 
-* Cloud Load Balancer (Global HTTP(S) LB): Provides Anycast IP, Global Edge Termination, SSL/TLS termination, and Default Proximity Routing to the nearest healthy region.
-* Cloud Armor: Provides DDoS & WAF Protection with Edge Enforcement and Adaptive Protection.
-* Firewall Rules (Ingress): Controls allowed incoming traffic at the edge and hub boundaries.
+    These components handle traffic entry, global routing, and initial security enforcement at the network edge.
 
-### 2. 🛡️ Hub VPC Core (Central Networking & Control)
-This multi-region hub acts as the control plane for networking, security, and shared services.
+    **Cloud Load Balancer (Global HTTP(S) LB)**
+    - Anycast IP addressing
+    - Global Edge Termination
+    - SSL/TLS termination
+    - Default Proximity Routing to the nearest healthy region
 
-* Virtual Private Cloud (VPC): The foundational Multi-region VPC network enabling global connectivity and Private Google Access.
-* Identity-Aware Proxy (IAP) Policy: Enforces Zero Trust Enforcement and IAM Authorization for access control.
-* Firewall Rules (Egress): Controls allowed outbound connections from the network to external services.
-* Hybrid connectivity: Manages connections to on-premises or external infrastructure.
-* Load Balancing (Internal): Regional load balancers for internal service traffic within the Hub or between Spokes.
+    **Cloud Armor**
+    - DDoS & WAF Protection
+    - Edge Enforcement
+    - Adaptive Protection
 
-### 3. 🖥️ Regional Compute Layer (Spokes)
-These are the regional application environments where the core workload resides, deployed across a primary and secondary region.
+    **Firewall Rules (Ingress)**
+    - Controls allowed incoming traffic at the edge and hub boundaries
+  </Tab>
 
-* Regional Deployment: Utilizes Region 1 (Primary) and Region 2 (Secondary) for high availability and disaster recovery.
-* Google Kubernetes Engine (GKE): Managed Kubernetes clusters for containerized application deployment.
-* Compute Engine: IaaS utilizing Managed Instance Groups (for auto-scaling) and Shielded VMs (for security).
-* Cloud Run: Serverless container platform offering Auto-scaling from zero and a Pay-per-use model.
+  <Tab title="🛡️ Hub VPC Core">
+    ### Central Networking & Control
 
-### 4. 🗄️ Data and Storage Layer (Spokes)
-Components dedicated to managing persistent and highly available data storage for the applications.
+    This multi-region hub acts as the control plane for networking, security, and shared services.
 
-* Cloud SQL: Managed relational database service (PostgreSQL/MySQL) with High Availability and automated recovery.
-* Cloud Storage: Multi-regional buckets for highly available object storage, supporting Lifecycle policies and Versioning.
+    **Virtual Private Cloud (VPC)**
+    - Multi-region VPC network
+    - Global connectivity
+    - Private Google Access
 
-### 5. 🤖 AI Services Integration
-Specific components for integrating specialized external and internal AI/ML capabilities.
+    **Identity-Aware Proxy (IAP) Policy**
+    - Zero Trust Enforcement
+    - IAM Authorization for access control
 
-* Vertex AI (ML Platform): Manages end-to-end machine learning lifecycle, including Model training and serving.
-* 11Labs Integration (Voice AI): Secure API gateway for integrating external AI services.
-* Other Services: Placeholder for future specialized integrations.
+    **Firewall Rules (Egress)**
+    - Controls allowed outbound connections to external services
 
-### 6. 🔒 Operations and Governance (Cross-Cutting)
-Central services providing monitoring, logging, and security governance across the entire architecture.
+    **Hybrid Connectivity**
+    - Manages connections to on-premises or external infrastructure
 
-* VPC Service Controls: Establishes Perimeter security for APIs to prevent data exfiltration.
-* Identity and Access Management (IAM): Manages Service accounts and enforces Custom roles.
-* Cloud KMS*: Manages encryption keys, covering Encryption key management and Key rotation policies.
-* Cloud Monitoring: Provides visibility via Custom dashboards and Alerting policies for SLOs.
-* Cloud Logging: Offers Centralized log aggregation and log-based metrics.
-* Cloud Trace: Provides Distributed tracing for performance and latency analysis.
+    **Load Balancing (Internal)**
+    - Regional load balancers for internal service traffic
+    - Hub-to-Spoke and Spoke-to-Spoke routing
+  </Tab>
+
+  <Tab title="🖥️ Compute Layer">
+    ### Regional Compute Layer (Spokes)
+
+    Regional application environments where the core workload resides, deployed across primary and secondary regions.
+
+    **Regional Deployment**
+    - Region 1 (Primary)
+    - Region 2 (Secondary)
+    - High availability and disaster recovery
+
+    **Google Kubernetes Engine (GKE)**
+    - Managed Kubernetes clusters
+    - Containerized application deployment
+    - Auto-scaling and self-healing
+
+    **Compute Engine**
+    - IaaS platform
+    - Managed Instance Groups (auto-scaling)
+    - Shielded VMs (security hardening)
+
+    **Cloud Run**
+    - Serverless container platform
+    - Auto-scaling from zero
+    - Pay-per-use model
+  </Tab>
+
+  <Tab title="🗄️ Data & Storage">
+    ### Data and Storage Layer (Spokes)
+
+    Components dedicated to managing persistent and highly available data storage for the applications.
+
+    **Cloud SQL**
+    - Managed relational database service
+    - PostgreSQL/MySQL support
+    - High Availability configuration
+    - Automated backups and recovery
+
+    **Cloud Storage**
+    - Multi-regional buckets
+    - Highly available object storage
+    - Lifecycle policies
+    - Object versioning
+  </Tab>
+
+  <Tab title="🤖 AI Services">
+    ### AI Services Integration
+
+    Specific components for integrating specialized external and internal AI/ML capabilities.
+
+    **Vertex AI (ML Platform)**
+    - End-to-end machine learning lifecycle
+    - Model training and serving
+    - AutoML capabilities
+    - MLOps integration
+
+    **11Labs Integration (Voice AI)**
+    - Secure API gateway
+    - External AI service integration
+    - Voice synthesis capabilities
+
+    **Other Services**
+    - Placeholder for future specialized integrations
+    - Extensible architecture for new AI providers
+  </Tab>
+
+  <Tab title="🔒 Operations">
+    ### Operations and Governance (Cross-Cutting)
+
+    Central services providing monitoring, logging, and security governance across the entire architecture.
+
+    **VPC Service Controls**
+    - Perimeter security for APIs
+    - Data exfiltration prevention
+
+    **Identity and Access Management (IAM)**
+    - Service account management
+    - Custom role enforcement
+    - Least privilege principle
+
+    **Cloud KMS**
+    - Encryption key management
+    - Key rotation policies
+    - Hardware security module (HSM) support
+
+    **Cloud Monitoring**
+    - Custom dashboards
+    - Alerting policies for SLOs
+    - Real-time metrics
+
+    **Cloud Logging**
+    - Centralized log aggregation
+    - Log-based metrics
+    - Audit trail retention
+
+    **Cloud Trace**
+    - Distributed tracing
+    - Performance analysis
+    - Latency debugging
+  </Tab>
+</Tabs>
+
+<Check>
+**Core Components Overview Complete**
+
+You now understand the six main architectural layers: Edge Security, Hub VPC Core, Compute Layer, Data & Storage, AI Services, and Operations & Governance.
+</Check>
 
 ## Data Flow
 
-This flow integrates the specific security, networking, and application components of your *multi-region, hub-and-spoke architecture*.
-
----
+This flow integrates the specific security, networking, and application components of the multi-region, hub-and-spoke architecture.
 
 ### 1. 🌐 External Request Flow (Ingress to Application)
 
-This traces the request from the public internet through the security and networking layers to the backend compute services. 
+This traces the request from the public internet through the security and networking layers to the backend compute services.
 
-1.  *User Request* $\rightarrow$ *Global Edge / Cloud Load Balancer (Global HTTP(S) LB):
-    * The request targets the Load Balancer's *Anycast IP*.
-    * *Cloud Armor* enforces *DDoS & WAF Protection* at the edge of the network.
+<Steps>
+  <Step title="User Request to Global Edge">
+    **User Request → Global Edge / Cloud Load Balancer (Global HTTP(S) LB)**
 
-2.  *Edge / Load Balancer* $\rightarrow$ *Hub VPC Core / IAP Policy:
-    * The Load Balancer performs *Default Proximity Routing*, directing traffic to the closest healthy region (*Region 1* or *Region 2*).
-    * *IAP Policy* (if enabled) enforces *Zero Trust* authentication and authorization before the request proceeds.
+    - The request targets the Load Balancer's **Anycast IP**
+    - **Cloud Armor** enforces **DDoS & WAF Protection** at the edge of the network
+    - Initial security validation occurs before routing
+  </Step>
 
-3.  *Hub VPC Core* $\rightarrow$ *Spoke VPC (Application Layer):
-    * *Firewall Rules* are checked for network separation and access control between the Hub and Spoke.
-    * The request is routed across the *Multi-region VPC network* to the target application in the Spoke (e.g., GKE, Cloud Run, or Compute Engine).
+  <Step title="Load Balancer to Hub VPC">
+    **Edge / Load Balancer → Hub VPC Core / IAP Policy**
 
-4.  *Application (Compute Layer) $\rightarrow$ Internal Services:
-    * The application (on *Cloud Run, GKE, or Compute Engine*) processes the request and calls supporting services:
-        * *Database: Accesses *Cloud SQL* for transactional data.
-        * *Storage: Retrieves or stores objects in *Cloud Storage* buckets.
-        * *AI Services: Initiates the internal *AI Agent Workflow* (see next section).
+    - The Load Balancer performs **Default Proximity Routing**, directing traffic to the closest healthy region (**Region 1** or **Region 2**)
+    - **IAP Policy** (if enabled) enforces **Zero Trust** authentication and authorization before the request proceeds
+    - User identity is verified against IAM policies
+  </Step>
 
-5.  *Application $\rightarrow$ User Response:
-    * The final response travels back through the Spoke, Hub, Load Balancer, and returns to the end-user.
+  <Step title="Hub to Spoke Routing">
+    **Hub VPC Core → Spoke VPC (Application Layer)**
 
----
+    - **Firewall Rules** are checked for network separation and access control between the Hub and Spoke
+    - The request is routed across the **Multi-region VPC network** to the target application in the Spoke
+    - Target may be GKE, Cloud Run, or Compute Engine
+  </Step>
+
+  <Step title="Application Processing">
+    **Application (Compute Layer) → Internal Services**
+
+    The application processes the request and calls supporting services:
+    - **Database**: Accesses **Cloud SQL** for transactional data
+    - **Storage**: Retrieves or stores objects in **Cloud Storage** buckets
+    - **AI Services**: Initiates the internal **AI Agent Workflow** (see next section)
+  </Step>
+
+  <Step title="Response to User">
+    **Application → User Response**
+
+    - The final response travels back through the Spoke, Hub, Load Balancer
+    - Response is delivered to the end-user
+    - All traffic is monitored and logged
+  </Step>
+</Steps>
+
+<Check>
+**External Request Flow Complete**
+
+User requests flow through: Load Balancer → Cloud Armor → IAP → Hub VPC → Spoke VPC → Application → Response
+</Check>
 
 ### 2. 🤖 AI Agent Workflow (Internal Processing)
 
 This section describes the internal, often asynchronous, process for tasks delegated to AI services.
 
-1.  *Trigger* $\rightarrow$ *Orchestration (CrewAI / Application):
-    * The application initiates the workflow, and the orchestrator (*CrewAI*) coordinates the overall task.
+<Steps>
+  <Step title="Workflow Initiation">
+    **Trigger → Orchestration (CrewAI / Application)**
 
-2.  *Orchestration $\rightarrow$ Agent Tasks (Processing):
-    * Individual agents perform specialized tasks, leveraging secure outbound connections:
-        * *AI Processing: Calls *Vertex AI* for internal ML model execution.
-        * *Voice Synthesis: Calls *11Labs Integration (Voice AI)* via a secure API gateway (Egress traffic controlled by Hub Firewall Rules).
-        * *Data Retrieval: Agents query necessary data from *Cloud SQL, Firestore, or Cloud Storage*.
+    - The application initiates the workflow
+    - The orchestrator (**CrewAI**) coordinates the overall task
+    - Task parameters and context are defined
+  </Step>
 
+  <Step title="Agent Task Execution">
+    **Orchestration → Agent Tasks (Processing)**
 
-3.  *State Management $\rightarrow$ Data Storage:
-    * *Cloud SQL* are used to persist the state, history, or context of the agent workflow.
+    Individual agents perform specialized tasks, leveraging secure outbound connections:
 
-4.  *Final Results $\rightarrow$ Caller Application:
-    * The results are returned to the calling application, completing the processing cycle.
-    * All steps are monitored by *Cloud Monitoring* and logged by *Cloud Logging*.
+    - **AI Processing**: Calls **Vertex AI** for internal ML model execution
+    - **Voice Synthesis**: Calls **11Labs Integration (Voice AI)** via a secure API gateway (Egress traffic controlled by Hub Firewall Rules)
+    - **Data Retrieval**: Agents query necessary data from **Cloud SQL**, Firestore, or **Cloud Storage**
+  </Step>
 
----
+  <Step title="State Persistence">
+    **State Management → Data Storage**
 
-Do you need a diagram of the *Hub and Spoke VPC model* to better visualize the network separation?
+    - **Cloud SQL** is used to persist the state, history, or context of the agent workflow
+    - Ensures workflow continuity and recovery
+    - Maintains audit trail for compliance
+  </Step>
+
+  <Step title="Results Return">
+    **Final Results → Caller Application**
+
+    - The results are returned to the calling application, completing the processing cycle
+    - All steps are monitored by **Cloud Monitoring**
+    - All activities are logged by **Cloud Logging**
+  </Step>
+</Steps>
+
+<Check>
+**AI Agent Workflow Complete**
+
+AI workflows follow: Trigger → Orchestration → Agent Tasks → State Persistence → Results Return
+</Check>
+
+<Info>
+For a detailed visualization of the Hub and Spoke VPC model showing network separation and traffic isolation, see the [Networking Architecture](/architecture/networking) documentation.
+</Info>
 
 ## High Availability Design
 
-### Multi-Region Deployment
+<AccordionGroup>
+  <Accordion title="Multi-Region Deployment" icon="globe">
+    **Regional Distribution Strategy**
 
-- *Primary Region*: Active production traffic
-- *Secondary Region*: Failover and read replicas
-- *Tertiary Region*: Disaster recovery
+    - **Primary Region**: Active production traffic
+      - Handles all live user requests
+      - Optimized for low latency
+      - Full read/write capabilities
 
-### Failover Strategy
+    - **Secondary Region**: Failover and read replicas
+      - Standby mode for disaster recovery
+      - Read replicas for database queries
+      - Reduced resource allocation vs. primary
 
-- Automatic failover via load balancer health checks
-- Database replication across regions
-- State synchronization for stateless services
-- DNS failover for complete region outages
+    - **Tertiary Region**: Disaster recovery
+      - Cold standby configuration
+      - Backup storage and archives
+      - Activated only during major incidents
 
-### Disaster Recovery
+    <Tip>
+    Deploy primary and secondary regions in close geographic proximity (e.g., us-central1 and us-east1) to minimize replication latency while maintaining regional separation for disaster scenarios.
+    </Tip>
+  </Accordion>
 
-- Automated backups with point-in-time recovery
-- Cross-region backup replication
-- Documented recovery procedures
-- Regular disaster recovery testing
+  <Accordion title="Failover Strategy" icon="arrows-rotate">
+    **Automated Failover Mechanisms**
+
+    - **Automatic failover via load balancer health checks**
+      - HTTP/HTTPS health probes every 5-10 seconds
+      - Unhealthy backend removal within 30 seconds
+      - Traffic automatically redirected to healthy region
+
+    - **Database replication across regions**
+      - Cloud SQL regional replication (synchronous or asynchronous)
+      - Read replicas for load distribution
+      - Automatic promotion of replicas during primary failure
+
+    - **State synchronization for stateless services**
+      - Session data stored in centralized cache (Memorystore)
+      - Stateless application design for horizontal scaling
+      - Configuration synchronized via Secret Manager
+
+    - **DNS failover for complete region outages**
+      - Cloud DNS with low TTL values (60 seconds)
+      - Health-based routing policies
+      - Automatic DNS record updates during outage
+
+    <Warning>
+    Test failover procedures quarterly to ensure RTO (Recovery Time Objective) and RPO (Recovery Point Objective) targets are met. Document all failover scenarios and runbooks.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Disaster Recovery" icon="life-ring">
+    **Backup and Recovery Procedures**
+
+    - **Automated backups with point-in-time recovery**
+      - Cloud SQL automated daily backups
+      - Transaction log retention for PITR
+      - 7-day backup retention (configurable up to 365 days)
+
+    - **Cross-region backup replication**
+      - Backups replicated to geographically distant region
+      - Multi-regional Cloud Storage buckets
+      - Versioning enabled for all critical data
+
+    - **Documented recovery procedures**
+      - Step-by-step recovery runbooks
+      - Role-based access for disaster recovery team
+      - Communication protocols for incident response
+
+    - **Regular disaster recovery testing**
+      - Quarterly DR drills
+      - Full region failover testing annually
+      - Post-test reports with improvement recommendations
+
+    <Note>
+    **Recovery Objectives:**
+    - RTO (Recovery Time Objective): < 1 hour for critical services
+    - RPO (Recovery Point Objective): < 5 minutes for database
+    - SLA Target: 99.95% uptime (multi-region deployment)
+    </Note>
+  </Accordion>
+</AccordionGroup>
 
 ## Scalability Design
 
-### Horizontal Scaling
+<Tabs>
+  <Tab title="Horizontal Scaling">
+    ### Scale Out Strategy
 
-- Auto-scaling instance groups
-- Cloud Run automatic scaling
-- GKE horizontal pod autoscaling
-- Load balancer distribution
+    **Auto-scaling instance groups**
+    - Managed Instance Groups (MIGs) with autoscaling policies
+    - CPU utilization threshold: 70%
+    - Scale up: Add instances when load increases
+    - Scale down: Remove instances during low traffic
+    - Minimum instances: 2 (for HA)
+    - Maximum instances: 10 (configurable)
 
-### Vertical Scaling
+    **Cloud Run automatic scaling**
+    - Serverless auto-scaling from 0 to N instances
+    - Request-based scaling (target: 80 concurrent requests per instance)
+    - Cold start optimization with minimum instances
+    - Scales to zero when idle for cost efficiency
 
-- Machine type upgrades
-- Database instance size increases
-- Storage capacity expansion
+    **GKE horizontal pod autoscaling**
+    - Horizontal Pod Autoscaler (HPA) based on CPU/memory
+    - Custom metrics autoscaling (e.g., queue depth, request rate)
+    - Cluster autoscaler for node pool expansion
+    - Pod disruption budgets for safe scaling
 
-### Cost Optimization
+    **Load balancer distribution**
+    - Traffic distributed across healthy backends
+    - Session affinity (optional) for stateful applications
+    - Connection draining during scale-down (60-second grace period)
 
-- Preemptible instances for non-critical workloads
-- Committed use discounts
-- Right-sizing recommendations
-- Automated resource scheduling
+    <Tip>
+    Horizontal scaling is preferred for stateless workloads as it provides better fault tolerance and cost efficiency compared to vertical scaling.
+    </Tip>
+  </Tab>
+
+  <Tab title="Vertical Scaling">
+    ### Scale Up Strategy
+
+    **Machine type upgrades**
+    - E2 series: General-purpose workloads (e2-small → e2-standard-4)
+    - N2 series: Compute-intensive workloads (n2-standard-2 → n2-standard-8)
+    - C2 series: Ultra high-performance computing
+    - Requires instance restart (planned maintenance window)
+
+    **Database instance size increases**
+    - Cloud SQL machine type upgrades
+    - Storage auto-increase enabled
+    - Read replicas for read-heavy workloads
+    - Minimal downtime during upgrades (< 2 minutes)
+
+    **Storage capacity expansion**
+    - Cloud Storage: Unlimited capacity (no manual intervention)
+    - Persistent Disk: Expand without detaching (online resize)
+    - Cloud SQL storage: Auto-increase from 10GB to 10TB
+
+    <Note>
+    Vertical scaling provides immediate performance improvements but has upper limits. Plan for eventual horizontal scaling as the primary growth strategy.
+    </Note>
+  </Tab>
+
+  <Tab title="Cost Optimization">
+    ### Cost Efficiency Strategies
+
+    **Preemptible instances for non-critical workloads**
+    - 80% cost savings vs. standard instances
+    - Suitable for batch processing, CI/CD, data processing
+    - Maximum runtime: 24 hours
+    - Graceful shutdown handling required
+
+    **Committed use discounts**
+    - 1-year commitment: 37% discount
+    - 3-year commitment: 55% discount
+    - Applied automatically to matching resources
+    - Recommended for predictable baseline workloads
+
+    **Right-sizing recommendations**
+    - Google Cloud Recommender analysis
+    - Idle resource identification
+    - Over-provisioned instance detection
+    - Monthly cost savings reports
+
+    **Automated resource scheduling**
+    - Dev/Test environment shutdown during off-hours
+    - Cloud Scheduler + Cloud Functions automation
+    - Weekend shutdown for non-production environments
+    - Potential savings: 60-70% for dev/test environments
+
+    <Tip>
+    Combine multiple cost optimization strategies: Use committed use discounts for baseline production capacity, preemptible instances for batch jobs, and automated scheduling for development environments.
+    </Tip>
+  </Tab>
+</Tabs>
+
+<Check>
+**Scalability Design Complete**
+
+Choose the appropriate scaling strategy based on workload characteristics: Horizontal for stateless apps, Vertical for databases, and Cost Optimization for all environments.
+</Check>
 
 ## Security Architecture
 
-See [Security Architecture](/architecture/security-architecture) for detailed security design.
+The security architecture implements a defense-in-depth strategy with multiple layers of protection. For comprehensive security details, see [Security Architecture](/architecture/security-architecture).
+
+<CardGroup cols={3}>
+  <Card title="Identity & Access" icon="shield-halved" href="/architecture/security-architecture#iam">
+    IAM policies, service accounts, and Zero Trust implementation
+  </Card>
+  <Card title="Network Security" icon="network-wired" href="/architecture/security-architecture#network">
+    VPC Service Controls, firewall rules, and Cloud Armor
+  </Card>
+  <Card title="Data Protection" icon="lock" href="/architecture/security-architecture#data">
+    Encryption at rest and in transit, Cloud KMS, and DLP
+  </Card>
+</CardGroup>
+
+<Info>
+**Security Compliance**: This architecture adheres to Konecta's security standards and supports compliance with SOC 2, ISO 27001, and GDPR requirements.
+</Info>
 
 ## Next Steps
 
-- [Design Principles](/architecture/design-principles) - Core design principles
-- [Component Diagram](/architecture/component-diagram) - Detailed component documentation
-- [Blueprints](/architecture/blueprints) - Reference architectures
-- [Networking](/architecture/networking) - Network architecture details
+<CardGroup cols={2}>
+  <Card title="Design Principles" icon="compass" href="/architecture/design-principles">
+    Core design principles guiding architectural decisions
+  </Card>
+  <Card title="Component Diagram" icon="diagram-project" href="/architecture/component-diagram">
+    Detailed component documentation and interactions
+  </Card>
+  <Card title="Blueprints" icon="drafting-compass" href="/architecture/blueprints">
+    Reference architectures and deployment patterns
+  </Card>
+  <Card title="Networking" icon="network-wired" href="/architecture/networking">
+    Network architecture details and Hub-Spoke topology
+  </Card>
+</CardGroup>
 
----
+## Related Documentation
 
-*Related Documentation*:
-- [Terraform Overview](/terraform/overview)
-- [Security Overview](/security/overview)
-- [Developer Guide](/developer-guide/deployment)
+<CardGroup cols={3}>
+  <Card title="Terraform Overview" icon="code" href="/terraform/overview">
+    Infrastructure as Code implementation
+  </Card>
+  <Card title="Security Overview" icon="shield" href="/security/overview">
+    Security policies and best practices
+  </Card>
+  <Card title="Developer Guide" icon="terminal" href="/developer-guide/deployment">
+    Deployment procedures and developer workflows
+  </Card>
+</CardGroup>
 

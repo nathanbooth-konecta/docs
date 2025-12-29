@@ -1,0 +1,193 @@
+# Third-Party Integrations
+
+This section covers integration guidance for popular third-party services and platforms with CrewAI installations.
+
+## WorkOS
+
+WorkOS is the authentication provider for CrewAI installations, offering secure enterprise-grade SSO and user management capabilities integrated with Google Workspace authentication.
+
+### Overview
+- Enterprise authentication provider for CrewAI using **AuthKit**
+- AuthKit configured to use **Google Auth platform** on the GCP Project hosting CrewAI
+- Sign-in methods:
+  - Google Workspace OIDC
+  - Magic Auth (passwordless email authentication)
+- **WorkOS Connect** provides OIDC middleware for CLI login to CrewAI via WorkOS
+- User and organization management
+- Seamless integration with Kubernetes deployments
+- Supports both Web UI and CLI authentication flows
+
+### Prerequisites
+- Active WorkOS account and organization
+- API credentials from WorkOS dashboard
+- AuthKit domain setup (e.g., `your-domain.authkit.app`)
+
+### Configuration
+
+#### CrewAI Configuration Variables
+
+These environment variables configure how CrewAI connects to WorkOS: 
+
+```yaml
+# Authentication Provider Selection
+AUTH_PROVIDER: "workos"  # or "entra_id", "google", "local"
+
+# OAuth Configuration
+oauth:
+  enabled: true  # Enables OAuth flow for user authentication
+OAUTH_COOKIE_SECRET: "[REDACTED]"  # Secure cookie encryption key for session management
+```
+
+#### WorkOS Configuration Variables
+
+These environment variables configure WorkOS AuthKit integration:
+ See [Install Guide: Step 4 - Prepare Configuration File](/crewai/install#step-4-prepare-configuration-file-my-valuesyaml) for detailed setup instructions
+
+```yaml
+# Public Credentials (safe to commit)
+WORKOS_CLIENT_ID: "client_XXXXXXXXXXXXXXXXXXXXXXXX"  # from WorkOS dashboard
+WORKOS_AUTHKIT_DOMAIN: "your-domain.authkit.app"    # AuthKit domain for Google Auth integration
+
+# Secrets (MUST be stored in Cloud Secret Manager / Kubernetes secrets - NEVER commit)
+WORKOS_API_KEY: "[REDACTED]"  # API key from WorkOS dashboard
+WORKOS_COOKIE_PASSWORD: "[REDACTED]"  # 32-bit randomly generated string for session encryption
+```
+
+#### WORKOS_COOKIE_PASSWORD Generation
+
+The `WORKOS_COOKIE_PASSWORD` must be a secure, randomly generated 32-character string:
+
+```bash
+# Generate using OpenSSL
+openssl rand -hex 16
+
+# Or using Python
+python -c "import secrets; print(secrets.token_hex(16))"
+
+# Or using Node.js
+node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"
+```
+
+Example output: `a3f7d8c2e4b9f1a6c8d3e7b2f9a4c1d5`
+
+### Setup Steps
+
+1. **Create WorkOS Account and Organization** - Register in WorkOS dashboard
+
+2. **Configure AuthKit with Google Auth**:
+   - Set up Google OAuth provider on your GCP Project
+   - Configure AuthKit to authenticate against Google Workspace
+   - Configure sign-in methods: Google Workspace OIDC and Magic Auth
+
+3. **Generate Credentials in WorkOS Dashboard**:
+   - Copy Client ID (public - safe to commit)
+   - Generate API Key (secret - store in Cloud Secret Manager)
+   - Note AuthKit Domain (`your-domain.authkit.app`)
+
+4. **Generate Session Encryption Key**:
+   - Generate a 32-character random string for `WORKOS_COOKIE_PASSWORD`
+   - Use command: `openssl rand -hex 16`
+
+5. **Configure WorkOS Connect for CLI Usage**:
+   - Enable WorkOS Connect for OIDC middleware
+   - Configure CLI authentication endpoint
+   - Enables passwordless CLI login via `crew ai login` command
+
+6. **Add Credentials to Kubernetes Values File**:
+   - Public values: `WORKOS_CLIENT_ID`, `WORKOS_AUTHKIT_DOMAIN`, `AUTH_PROVIDER`
+   - Store secrets in Google Cloud Secret Manager (not in values file)
+
+
+### Current Setup
+
+Based on workspace configuration:
+- **Provider**: WorkOS with AuthKit
+- **Identity Provider**: Google Auth on GCP Project
+- **Sign-In Methods**: Google Workspace OIDC + Magic Auth
+- **CLI Access**: WorkOS Connect OIDC middleware enabled
+- **Authentication Domain**: `your-domain.authkit.app`
+- **Deployment**: Kubernetes with Helm (GCP)
+- **Secrets Management**: Google Cloud Secret Manager
+- **Cookie Security**: Password-protected session cookies (32-bit random key)
+- **Web UI**: OAuth-enabled authentication
+- **CLI**: OIDC-based login via `crew ai login`
+
+### Common Integrations
+- **Web UI**: Single Sign-On (SSO) with Google Workspace OIDC
+- **Web UI**: Passwordless authentication via Magic Auth
+- **CLI**: OIDC-based login for `crew ai` command-line interface
+- **CLI**: Secure token management via WorkOS Connect
+- User and organization provisioning
+- Directory synchronization with Google Workspace
+- Multi-tenant user management
+
+### Security Best Practices
+- Never commit `WORKOS_API_KEY` or `WORKOS_COOKIE_PASSWORD` to version control
+- Store all secrets in Cloud Secret Manager (GCP) or equivalent
+- Rotate API keys regularly
+- Use environment-specific configurations (dev/prod)
+- Enable HTTPS for production deployments
+
+### Testing
+- Local testing with AuthKit domain
+- Test SSO flows in development environment
+- Validate user provisioning and organization sync
+- Integration testing with Kubernetes deployment
+
+### Troubleshooting
+- Verify `WORKOS_CLIENT_ID` matches dashboard configuration
+- Check `WORKOS_AUTHKIT_DOMAIN` is correctly formatted
+- Ensure `WORKOS_API_KEY` is properly stored and accessible
+- Review Kubernetes secret mounts and volume mappings
+- Check application logs for authentication errors
+
+### Related Documentation
+- See [GCP Setup Guide](/crewai/gcp-setup) for Cloud Secret Manager configuration
+- Refer to [Install Guide](/crewai/install) for complete Helm values setup
+- WorkOS official documentation: https://workos.com/docs
+
+## Additional Third-Party Services
+
+### [Service Name]
+- Overview
+- Prerequisites
+- Installation
+- Configuration
+- Common Integrations
+- Code Examples
+- Testing
+- Troubleshooting
+
+## Integration Best Practices
+
+### Security
+- API key management
+- Credential rotation
+- Scope and permission minimization
+- Audit logging
+
+### Performance
+- Rate limiting strategies
+- Caching considerations
+- Async operations
+- Monitoring and alerting
+
+### Reliability
+- Error handling patterns
+- Retry logic
+- Fallback mechanisms
+- Health checks
+
+## Monitoring and Maintenance
+
+- Health checks and status monitoring
+- Logging integration events
+- Metrics and analytics
+- Update and version management
+
+## Support and Resources
+
+- Links to service documentation
+- Community forums and discussions
+- Support channels
+- Known limitations and roadmap

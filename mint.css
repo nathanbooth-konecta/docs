@@ -1,0 +1,27 @@
+/* Custom CSS to increase content width for larger screens */
+
+/* Increase max width of main content container */
+.docs-content {
+  max-width: 1400px !important;
+}
+
+/* Increase width of the article/page content */
+article {
+  max-width: 1200px !important;
+}
+
+/* Adjust container width */
+.container {
+  max-width: 1400px !important;
+}
+
+/* For full-width layouts on larger screens */
+@media (min-width: 1536px) {
+  .docs-content {
+    max-width: 1600px !important;
+  }
+
+  article {
+    max-width: 1400px !important;
+  }
+}

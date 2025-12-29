@@ -1,11 +1,11 @@
 export const metadata = {
   title: "CrewAI GCP Infrastructure",
-  description: "Comprehensive Terraform IaC for CrewAI platform deployment on Google Cloud Platform",
+  description: "Production-grade Terraform IaC for CrewAI platform deployment on Google Cloud Platform with enterprise security and compliance",
 };
 
 # 🚀 CrewAI GCP Infrastructure Setup Blueprint
 
-A **production-ready Terraform Infrastructure-as-Code (IaC)** blueprint that automates the complete deployment of the **CrewAI Enterprise Platform** on **Google Cloud Platform (GCP)**. This project handles everything from organizational hierarchy setup to a fully configured Kubernetes cluster with all required backend services.
+A **production-grade Terraform Infrastructure-as-Code (IaC)** blueprint that automates the complete deployment of the **CrewAI Enterprise Platform** on **Google Cloud Platform (GCP)**. This solution handles everything from organizational hierarchy setup to a fully configured, secure Kubernetes cluster with all required backend services, monitoring, logging, and compliance controls.
 
 ## 📋 Table of Contents
 
@@ -222,6 +222,33 @@ Missing prerequisites can cause deployment failures. Ensure all tools are instal
   sudo apt-get install -y terraform google-cloud-sdk kubectl awscli
   ```
   </Tab>
+  <Tab title="Windows (Chocolatey)">
+  ```powershell
+  # Install Terraform
+  choco install terraform
+  
+  # Install Google Cloud SDK
+  choco install google-cloud-sdk
+  
+  # Install kubectl
+  choco install kubernetes-cli
+  
+  # Install AWS CLI
+  choco install awscli
+  ```
+  
+  <Callout type="info" title="Don't Have Chocolatey?">
+  Install Chocolatey first: https://chocolatey.org/install
+  
+  Or use **winget** (Windows Package Manager):
+  ```powershell
+  winget install -e --id Hashicorp.Terraform
+  winget install -e --id Google.CloudSDK
+  winget install -e --id Kubernetes.kubectl
+  winget install -e --id Amazon.AWSCLI
+  ```
+  </Callout>
+  </Tab>
   <Tab title="Manual Installation">
   - [Terraform](https://www.terraform.io/downloads.html) - Version 1.0.0 or higher
   - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) - Latest version
@@ -281,8 +308,8 @@ If all commands return version information, you're ready to proceed!
 <Steps>
   <Step title="Clone Repository" icon="git">
     ```bash
-    git clone git@bitbucket.org:grupokonecta/crewai-gcp-infra-dev.git
-    cd crewai-gcp-infra-dev
+    git clone git@bitbucket.org:grupokonecta/crewai-gcp-infra-prod.git
+    cd crewai-gcp-infra-prod
     ```
   </Step>
   
@@ -346,15 +373,18 @@ If all commands return version information, you're ready to proceed!
 ### Root Directory Files
 
 ```
-crewai-gcp-infra-dev/
+crewai-gcp-infra-prod/
 ├── main.tf                    # Main module orchestration (70+ resources)
 ├── variables.tf               # Input variable definitions
 ├── outputs.tf                 # Output definitions
 ├── backend.tf                 # Terraform state backend (AWS S3)
-├── terraform.auto.tfvars      # Variable values (GIT IGNORED)
+├── terraform.auto.tfvars      # Variable values (GIT IGNORED - production secrets)
+├── terraform.auto.tfvars.example  # Template for variable values
 ├── Makefile                   # DevOps task automation
-├── README.mdx                 # This file
+├── README.mdx                 # Comprehensive documentation
 ├── bitbucket-pipelines.yml    # CI/CD pipeline configuration
+├── .pre-commit-config.yaml    # Pre-commit hooks for code quality
+├── .tflint.hcl                # TFLint configuration
 └── modules/                   # Terraform modules directory
 ```
 
@@ -365,10 +395,11 @@ crewai-gcp-infra-dev/
 ```
 modules/
 ├── folders/
-│   ├── folders.tf            # Organizational folder hierarchy
+│   ├── folders.tf            # 5-level organizational folder hierarchy
 │   ├── variables.tf          # Folder-specific variables
 │   ├── outputs.tf            # Folder outputs (folder IDs)
 │   └── terraform.tf          # Provider configuration
+│   # Creates: Root → Solution → Environment → Region → Country
 │
 ├── projects/
 │   ├── projects.tf           # GCP project creation
@@ -503,6 +534,33 @@ crewai-platform/
 
 ## ⚙️ Configuration Guide
 
+### Production Security Checklist
+
+Before deploying to production, ensure:
+
+<CardGroup cols={2}>
+  <Card title="Access Control" icon="lock">
+    - Service account with least-privilege IAM roles
+    - VPC endpoint isolation enabled
+    - Workload Identity configured
+  </Card>
+  <Card title="Data Protection" icon="shield">
+    - Cloud SQL SSL/TLS enforced
+    - Secret Manager for all credentials
+    - Encryption at rest and in transit
+  </Card>
+  <Card title="Monitoring" icon="activity">
+    - Cloud Monitoring alerts configured
+    - Audit logging enabled
+    - VPC Flow Logs enabled
+  </Card>
+  <Card title="Compliance" icon="check">
+    - Resource naming follows Konecta standards
+    - Proper tagging for cost allocation
+    - Budget alerts configured
+  </Card>
+</CardGroup>
+
 ### Essential Variables
 
 All variables are defined in [variables.tf](variables.tf). Key variables you must configure:
@@ -510,12 +568,13 @@ All variables are defined in [variables.tf](variables.tf). Key variables you mus
 #### GCP Organization Structure
 
 ```hcl
-# Organizational hierarchy configuration
-organization_id     = "123456789"      # GCP Organization ID
-root_folder_name    = "Global IT"      # Root folder name
-env_folder_name     = "DEV"            # Environment (DEV, PROD, STG, LGC)
-region_folder_name  = "CORP"           # Region/Hub (CORP, LATAM, IBERIA)
-country_folder_name = "CO"             # Country (CO, BR, AR, etc.)
+# Organizational hierarchy configuration (5-level structure)
+organization_id        = "123456789"      # GCP Organization ID
+root_folder_name       = "Global IT"      # Root folder name
+solution_folder_name   = "CrewAI"         # Level 0: Solution/Product folder
+env_folder_name        = "PROD"           # Level 1: Environment (DEV, PROD, STG, LGC)
+region_folder_name     = "CORP"           # Level 2: Region/Hub (CORP, LATAM, IBERIA)
+country_folder_name    = "CO"             # Level 3: Country (CO, BR, AR, etc.)
 ```
 
 #### Project Configuration
@@ -557,7 +616,7 @@ gcs_crewai_logs_suffix = "crewai-logs"   # Bucket suffix: {project_id}-{suffix}
 cluster_name                = "crewai-cluster"
 cluster_initial_node_count  = 1             # Starting number of nodes
 cluster_node_machine_type   = "e2-standard-4"  # Machine type for nodes
-cluster_authorized_networks = []            # Auto-populated with Terraform runner IP
+cluster_authorized_networks = ["203.0.113.25/32"]  # External IPs for kubectl access (auto-detection adds Terraform runner IP)
 
 # Database Configuration
 db_instance_name      = "crewai-db"
@@ -566,6 +625,59 @@ db_edition            = "ENTERPRISE"         # Cloud SQL edition
 db_database_name      = "crewai"
 db_master_username    = "crewai_admin"
 reader_instance_count = 2                    # Read replicas
+```
+
+#### External IP & Network Access Configuration
+
+<CardGroup cols={2}>
+  <Card title="Auto-Detection" icon="zap">
+    Terraform runner IP automatically detected and authorized
+  </Card>
+  <Card title="Additional IPs" icon="lock">
+    Specify external IPs for team members needing kubectl access
+  </Card>
+  <Card title="CIDR Format" icon="shield">
+    Use CIDR notation: single IP = `/32`, subnet = appropriate mask
+  </Card>
+  <Card title="Private Cluster" icon="key">
+    Leave empty for private-only access (recommended for production)
+  </Card>
+</CardGroup>
+
+```hcl
+# Configure external IP access to GKE cluster API endpoint
+cluster_authorized_networks = [
+  "203.0.113.25/32",      # Jane's office IP
+  "198.51.100.0/24",      # Company VPN subnet
+  "192.0.2.50/32"         # CI/CD pipeline IP
+]
+
+# Note: The Terraform runner's IP is automatically added during deployment
+# Use "gcloud compute networks peerings list" to see VPC peerings
+# Use "gcloud container clusters describe" to view authorized networks
+```
+
+**How to find your external IP:**
+
+```bash
+# Get your current external IP
+curl -s https://checkip.amazonaws.com
+# Output: 203.0.113.25
+
+# Add to configuration
+cluster_authorized_networks = ["203.0.113.25/32"]
+
+# For entire subnet/VPN
+cluster_authorized_networks = ["198.51.100.0/24"]
+```
+
+**Verify authorized networks after deployment:**
+
+```bash
+gcloud container clusters describe crewai-cluster \
+  --region <your-region> \
+  --project <your-project-id> \
+  --format="value(masterAuthorizedNetworks.cidrBlocks[].cidrBlock)"
 ```
 
 #### Budget Configuration
@@ -603,11 +715,12 @@ Ensure you have completed all prerequisites. Incorrect configuration can result 
   <Tab title="Clone & Authenticate">
     ```bash
     # Clone repository
-    git clone <your-repository-url>
-    cd crewai-gcp-infra-dev
+    git clone git@bitbucket.org:grupokonecta/crewai-gcp-infra-prod.git
+    cd crewai-gcp-infra-prod
     
-    # Authenticate with GCP
+    # Authenticate with GCP (production service account recommended)
     gcloud auth application-default login
+    # Or for service account: gcloud auth activate-service-account --key-file=key.json
     ```
   </Tab>
   <Tab title="Configure State Management">
@@ -641,8 +754,10 @@ nano terraform.auto.tfvars  # or vim, code, etc.
     <Accordion title="Organizational Settings">
       - `organization_id`: Your GCP Organization ID
       - `root_folder_name`: Root folder name (e.g., "Global IT")
+      - `solution_folder_name`: Solution/Product folder (e.g., "CrewAI")
       - `env_folder_name`: Environment (DEV, PROD, STG)
-      - `region_folder_name`: Region/Hub (CORP, LATAM)
+      - `region_folder_name`: Region/Hub (CORP, LATAM, IBERIA)
+      - `country_folder_name`: Country code (CO, BR, AR, etc.)
     </Accordion>
     <Accordion title="Project Details">
       - `project_id`: Unique project ID
@@ -780,6 +895,9 @@ make apply
   <Card title="Cost Optimized" icon="dollar-sign">
     Auto-scaling, committed discounts, right-sizing, budget monitoring, efficient scheduling.
   </Card>
+  <Card title="Smart Network Access" icon="network">
+    Auto-detects Terraform runner IP, configurable external IPs for team kubectl access.
+  </Card>
   <Card title="Developer Friendly" icon="code">
     Clear Makefile, full docs, modular design, CI/CD ready, pre-commit hooks.
   </Card>
@@ -875,39 +993,54 @@ TF_LOG=DEBUG terraform apply -out=tfplan > debug.log 2>&1
 
 ### Approximate Resource Count by Module
 
-| Module | Resource Count | Deployment Time |
-|--------|---|---|
-| Folders | 3 | 30 seconds |
-| Projects | 1 | 1 minute |
-| APIs | 50+ | 2 minutes |
-| Service Accounts | 3-5 | 1 minute |
-| IAM Roles | 10+ | 2 minutes |
-| Networking | 8-10 | 2 minutes |
-| Storage | 2 | 30 seconds |
-| Database | 3-5 | 5-10 minutes |
-| Cluster | 1 | 8-12 minutes |
-| **Total** | **70-80** | **15-20 minutes** |
+| Module | Resource Count | Deployment Time | Production Notes |
+|--------|---|---|---|
+| Folders | 3 | 30 seconds | Organizational hierarchy |
+| Projects | 1 | 1 minute | Tagged and labeled |
+| APIs | 50+ | 2 minutes | All enterprise APIs enabled |
+| Service Accounts | 3-5 | 1 minute | Workload Identity enabled |
+| IAM Roles | 10+ | 2 minutes | Least-privilege configuration |
+| Networking | 8-10 | 2 minutes | Multi-zone, VPC Flow Logs |
+| Storage | 2 | 30 seconds | Versioning and encryption |
+| Database | 3-5 | 10-15 minutes | HA with read replicas |
+| Cluster | 1 | 12-18 minutes | GKE Standard, private nodes |
+| Monitoring | 5+ | 1 minute | Cloud Monitoring and Logging |
+| **Total** | **80-90** | **20-30 minutes** | **Complete production setup** |
 
-### Cost Estimation
+### Cost Estimation - Production Configuration
 
-Based on recommended configuration:
+Based on production-recommended configuration:
 
-| Component | Estimated Cost | Notes |
+| Component | Estimated Cost | Configuration |
 |-----------|---|---|
-| GKE Cluster | $150-200/month | 3 node cluster |
-| Cloud SQL (HA + replicas) | $300-400/month | 2 read replicas |
-| VPC & Load Balancing | $30-50/month | Multi-zone |
-| Storage (GCS) | $10-20/month | Data + logs |
-| Secrets & Services | $5-10/month | Secret Manager |
-| **Total Estimated** | **$495-680/month** | **Production config** |
+| GKE Cluster | €200-350/month | 3 nodes, HA, auto-scaling |
+| Cloud SQL (HA + replicas) | €400-550/month | db-custom-4-16384 + 2 read replicas |
+| VPC & Load Balancing | €50-100/month | Multi-zone, Cloud NAT |
+| Storage (GCS) | €15-25/month | Data + logs with versioning |
+| Monitoring & Logging | €20-40/month | Cloud Monitoring, Logging, Alerting |
+| Secrets & Services | €15-30/month | Secret Manager, Artifact Registry |
+| Cloud Functions | €10-20/month | Budget monitoring |
+| **Total Production** | **€710-1,115/month** | **Fully HA enterprise config** |
 
-<Callout type="success" title="Save Money in Development" icon="dollar-sign">
+<Callout type="success" title="Cost Optimization Options" icon="dollar-sign">
   <AccordionGroup>
     <Accordion title="For Development Environments">
       - Use `e2-standard-2` instead of `e2-standard-4`
       - Set `cluster_initial_node_count = 1`
       - Set `reader_instance_count = 0` (no replicas)
-      - **Estimated Savings**: $300-400/month
+      - Set `db_instance_tier = "db-custom-2-7680"` (2 vCPU, 7.5GB RAM)
+      - Disable advanced monitoring and logging to reduce costs
+      - **Estimated Savings**: €400-500/month
+    </Accordion>
+    <Accordion title="For Production Environments">
+      - Use `e2-standard-4` or higher for nodes
+      - Set `cluster_initial_node_count = 3` (HA configuration)
+      - Set `reader_instance_count = 2` (read replicas for scaling)
+      - Use `db-custom-4-16384` or higher (4+ vCPU, 16GB+ RAM)
+      - Enable Cloud Armor for DDoS protection
+      - Enable binary logging for point-in-time recovery
+      - Implement VPC Service Controls for additional security
+      - **Recommended**: €800-1,000/month budget
     </Accordion>
   </AccordionGroup>
 </Callout>
@@ -1043,8 +1176,8 @@ Each module includes its own README:
 
 ```bash
 # Clone repository
-git clone <repository-url>
-cd crewai-gcp-infra-dev
+git clone git@bitbucket.org:grupokonecta/crewai-gcp-infra-prod.git
+cd crewai-gcp-infra-prod
 
 # Create feature branch
 git checkout -b feature/your-feature-name
@@ -1139,7 +1272,59 @@ Error message:
 - Configuration: [relevant variables]
 ```
 
-## 📄 License
+## � Production Deployment Checklist
+
+Before deploying to production, complete this checklist:
+
+<AccordionGroup>
+  <Accordion title="Infrastructure Readiness">
+    - [ ] GCP Organization and billing account configured
+    - [ ] Service account created with appropriate IAM roles
+    - [ ] AWS S3 state backend access verified
+    - [ ] All variables configured in terraform.auto.tfvars
+    - [ ] Budget alerts configured (€1,000/month recommended)
+    - [ ] Network isolation and firewall rules reviewed
+  </Accordion>
+  
+  <Accordion title="Security & Compliance">
+    - [ ] SSL/TLS certificates configured
+    - [ ] Database credentials stored in Secret Manager
+    - [ ] Workload Identity enabled for service accounts
+    - [ ] VPC Service Controls implemented (if required)
+    - [ ] Cloud Armor DDoS protection enabled
+    - [ ] Audit logging enabled for all resources
+    - [ ] VPC Flow Logs enabled for network monitoring
+  </Accordion>
+  
+  <Accordion title="Monitoring & Logging">
+    - [ ] Cloud Monitoring dashboards created
+    - [ ] Alert policies configured for critical metrics
+    - [ ] Cloud Logging retention set appropriately
+    - [ ] Log-based metrics configured
+    - [ ] Error reporting configured
+    - [ ] Cloud Trace enabled for performance monitoring
+  </Accordion>
+  
+  <Accordion title="Data & Backups">
+    - [ ] Cloud SQL backups configured (automated)
+    - [ ] Point-in-time recovery verified (7-day retention)
+    - [ ] GCS bucket versioning enabled
+    - [ ] Backup retention policies configured
+    - [ ] Disaster recovery plan documented
+  </Accordion>
+  
+  <Accordion title="Testing & Validation">
+    - [ ] terraform validate passed
+    - [ ] tflint checks passed with no errors
+    - [ ] Plan reviewed for correctness (terraform plan)
+    - [ ] Dry-run tested in non-production environment
+    - [ ] Database connectivity verified
+    - [ ] Kubernetes cluster connectivity verified
+    - [ ] Application deployment tested
+  </Accordion>
+</AccordionGroup>
+
+## �📄 License
 
 This project is proprietary and maintained by Konecta. 
 
@@ -1189,5 +1374,6 @@ Questions? Check the [Configuration Guide](#configuration-guide) or [Troubleshoo
 ---
 
 **Last Updated**: December 29, 2025  
-**Version**: 1.0.0  
-**Status**: Production Ready ✅
+**Version**: 2.0.0 (Production)  
+**Status**: Production Grade ✅  
+**Repository**: [crewai-gcp-infra-prod](https://bitbucket.org/grupokonecta/crewai-gcp-infra-prod)

@@ -5,17 +5,40 @@ description: Get started quickly with deploying the Google Cloud infrastructure
 
 # Quickstart Guide
 
-This guide will help you get started with deploying the Google Cloud infrastructure for Agentic AI solutions in under 30 minutes.
+Deploy production-ready Google Cloud infrastructure for Agentic AI solutions in under 30 minutes!
+
+<Callout type="info" title="Estimated Time: 20-30 minutes">
+This guide walks you through a complete infrastructure deployment. Actual deployment to GCP takes 15-20 minutes.
+</Callout>
 
 ## Prerequisites
 
 Before you begin, ensure you have:
 
-- [ ] Google Cloud Platform account with billing enabled
-- [ ] Terraform >= 1.5.0 installed
-- [ ] Google Cloud SDK (gcloud) installed and configured
-- [ ] Appropriate IAM permissions (see [Prerequisites](/developer-guide/prerequisites))
-- [ ] Git installed
+<CardGroup cols={2}>
+  <Card title="GCP Account" icon="cloud">
+    With billing enabled and organization access
+  </Card>
+  <Card title="Terraform" icon="cube">
+    Version 1.5.0 or higher installed
+  </Card>
+  <Card title="Google Cloud SDK" icon="code">
+    `gcloud` CLI installed and configured
+  </Card>
+  <Card title="kubectl" icon="container">
+    Kubernetes CLI for cluster management
+  </Card>
+  <Card title="Git" icon="git-branch">
+    For cloning the repository
+  </Card>
+  <Card title="AWS CLI v2" icon="terminal">
+    For Terraform state management
+  </Card>
+</CardGroup>
+
+<Callout type="warning" title="Not Installed?">
+See the [Prerequisites](/developer-guide/prerequisites) page for detailed installation instructions for your OS.
+</Callout>
 
 ## Step 1: Clone the Repository
 
@@ -26,43 +49,83 @@ cd gcp-iac-repo
 
 ## Step 2: Authenticate with Google Cloud
 
-```bash
-# Login to Google Cloud
-gcloud auth login
-
-# Set your project
-gcloud config set project YOUR_PROJECT_ID
-
-# Enable required APIs
-gcloud services enable compute.googleapis.com
-gcloud services enable storage.googleapis.com
-gcloud services enable iam.googleapis.com
-gcloud services enable cloudresourcemanager.googleapis.com
-```
+<Tabs>
+  <Tab title="Interactive Login">
+    ```bash
+    # Login to Google Cloud
+    gcloud auth login
+    ```
+    Follow the browser prompt to authenticate.
+  </Tab>
+  <Tab title="Set Project">
+    ```bash
+    # Set your active project
+    gcloud config set project YOUR_PROJECT_ID
+    
+    # Verify the project
+    gcloud config list
+    ```
+  </Tab>
+  <Tab title="Enable APIs">
+    ```bash
+    # Enable required APIs
+    gcloud services enable compute.googleapis.com
+    gcloud services enable storage.googleapis.com
+    gcloud services enable iam.googleapis.com
+    gcloud services enable cloudresourcemanager.googleapis.com
+    ```
+  </Tab>
+</Tabs>
 
 ## Step 3: Configure Terraform Variables
 
 Create a `terraform.tfvars` file in the root directory:
 
 ```hcl
+# Core Configuration
 project_id     = "your-gcp-project-id"
 region         = "us-central1"
 zone           = "us-central1-a"
 environment    = "dev"
 
-# Optional: Customize these values
+# Network Configuration
 network_name   = "agentic-ai-network"
 subnet_name    = "agentic-ai-subnet"
+
+# Optional: Customize these values
+enable_monitoring = true
+enable_logging    = true
 ```
+
+<Callout type="info" title="Configuration Help">
+See the [Configuration Guide](/crewai/gcp-setup#configuration-guide) for detailed explanations of all variables.
+</Callout>
 
 ## Step 4: Initialize Terraform
 
-```bash
-cd terraform
-terraform init
-```
+<Steps>
+  <Step title="Navigate to Terraform Directory">
+    ```bash
+    cd terraform
+    ```
+  </Step>
+  <Step title="Initialize Terraform">
+    ```bash
+    terraform init
+    ```
+    This downloads the required Terraform providers and modules.
+  </Step>
+  <Step title="Validate Configuration">
+    ```bash
+    terraform validate
+    ```
+    Ensures your Terraform code is syntactically correct.
+  </Step>
+</Steps>
 
-This will download the required Terraform providers and modules.
+<Callout type="success" title="Initialization Complete">
+You're ready to preview the infrastructure deployment!
+</Callout>
 
 ## Step 5: Review the Deployment Plan
 
@@ -70,7 +133,21 @@ This will download the required Terraform providers and modules.
 terraform plan
 ```
 
-Review the resources that will be created. This is a dry-run that shows what Terraform will do without making any changes.
+This command shows you exactly what Terraform will create without making any changes. You should see output like:
+
+```
+Plan: 15 to add, 0 to change, 0 to destroy
+
+...resources to be created...
+```
+
+<Callout type="info" title="Understanding the Plan">
+  - **to add**: New resources that will be created
+  - **to change**: Existing resources that will be modified
+  - **to destroy**: Resources that will be deleted
+  
+  Review the plan carefully before proceeding!
+</Callout>
 
 ## Step 6: Deploy the Infrastructure
 
@@ -78,52 +155,86 @@ Review the resources that will be created. This is a dry-run that shows what Ter
 terraform apply
 ```
 
-Type `yes` when prompted to confirm the deployment. This will create:
+When prompted, review the plan one more time and type `yes` to confirm:
 
-- VPC network and subnets
-- Firewall rules
-- Compute instances (if configured)
-- Storage buckets
-- IAM roles and service accounts
-- Basic monitoring and logging
+```
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+```
+
+<Callout type="warning" title="Deployment in Progress">
+This will create actual resources in your GCP project. Deployment typically takes **15-20 minutes**. You'll see progress updates in your terminal as each resource is created.
+</Callout>
 
 ## Step 7: Verify Deployment
 
-After deployment completes, verify the infrastructure:
+After deployment completes successfully, verify your infrastructure:
 
-```bash
-# List created resources
-gcloud compute networks list
-gcloud compute instances list
-gcloud storage buckets list
-
-# Check Terraform outputs
-terraform output
-```
+<Tabs>
+  <Tab title="List Created Resources">
+    ```bash
+    # List your networks
+    gcloud compute networks list
+    
+    # List instances
+    gcloud compute instances list
+    
+    # List storage buckets
+    gcloud storage buckets list
+    ```
+  </Tab>
+  <Tab title="View Terraform Outputs">
+    ```bash
+    # Display all outputs
+    terraform output
+    
+    # Get specific output
+    terraform output network_id
+    terraform output subnet_id
+    ```
+  </Tab>
+  <Tab title="Test Connectivity">
+    ```bash
+    # For compute instances
+    gcloud compute ssh INSTANCE_NAME --zone=ZONE
+    
+    # Check security groups
+    gcloud compute security-policies list
+    ```
+  </Tab>
+</Tabs>
 
 ## Step 8: Access Your Infrastructure
 
-Once deployed, you can:
+Now that your infrastructure is deployed, you can:
 
-1. **SSH into instances** (if created):
-   ```bash
-   gcloud compute ssh INSTANCE_NAME --zone=ZONE
-   ```
-
-2. **View logs**:
-   ```bash
-   gcloud logging read "resource.type=gce_instance" --limit 50
-   ```
-
-3. **Check monitoring**:
-   - Visit [Cloud Console](https://console.cloud.google.com)
-   - Navigate to Monitoring > Dashboards
+<CardGroup cols={2}>
+  <Card title="SSH into Instances" icon="terminal">
+    ```bash
+    gcloud compute ssh INSTANCE_NAME --zone=ZONE
+    ```
+  </Card>
+  <Card title="View Cloud Logs" icon="file-text">
+    ```bash
+    gcloud logging read "resource.type=gce_instance" --limit 50
+    ```
+  </Card>
+  <Card title="Access Cloud Console" icon="globe">
+    Visit [Cloud Console](https://console.cloud.google.com) and navigate to your project
+  </Card>
+  <Card title="Check Monitoring" icon="activity">
+    Go to **Monitoring** > **Dashboards** in Cloud Console
+  </Card>
+</CardGroup>
 
 ## Common Next Steps
 
-### Deploy Application Services
+### 1. Deploy Application Services
 
-After the foundation is deployed, you can deploy application-specific services:
+Once your foundation is ready:
 
 ```bash
 cd terraform/modules/app-services
@@ -131,23 +242,106 @@ terraform init
 terraform apply
 ```
 
-### Configure CI/CD
+<Callout type="info" title="What Gets Deployed">
+Application-specific services, databases, caching layers, and load balancers.
+</Callout>
+
+### 2. Configure CI/CD
 
 Set up continuous deployment:
 
 ```bash
 cd .github/workflows
 # Review and customize GitHub Actions workflows
+git add .
+git commit -m "Configure CI/CD for project"
+git push
 ```
 
-### Set Up Monitoring
+### 3. Set Up Monitoring
 
 Configure custom dashboards and alerts:
 
+<Tabs>
+  <Tab title="Using Terraform">
+    ```bash
+    cd terraform/modules/monitoring
+    terraform apply
+    ```
+  </Tab>
+  <Tab title="Using Cloud Console">
+    1. Go to **Monitoring** > **Dashboards**
+    2. Click **Create Dashboard**
+    3. Add metrics and charts for your resources
+  </Tab>
+</Tabs>
+
+### 4. Configure Logging
+
+Enable comprehensive logging across your infrastructure:
+
 ```bash
-cd terraform/modules/monitoring
-terraform apply
+gcloud logging sinks create cloud-storage-sink \
+  storage.googleapis.com/your-logging-bucket \
+  --log-filter='resource.type="gce_instance"'
 ```
+
+## Troubleshooting
+
+### Terraform Init Fails
+
+<Callout type="error" title="Error: Failed to download module">
+  ```bash
+  rm -rf .terraform
+  terraform init
+  ```
+  Clear the Terraform cache and try again.
+</Callout>
+
+### Authentication Errors
+
+<Callout type="error" title="Error: Google Cloud credentials not found">
+  ```bash
+  gcloud auth application-default login
+  ```
+  Re-authenticate with GCP.
+</Callout>
+
+### API Not Enabled
+
+<Callout type="error" title="Error: Service has not been used in project">
+  ```bash
+  gcloud services enable <service-name>
+  ```
+  Enable the required GCP service manually.
+</Callout>
+
+For more troubleshooting, see the [Full Troubleshooting Guide](/crewai/gcp-setup#troubleshooting).
+
+## What's Next?
+
+<Steps>
+  <Step title="Explore Architecture">
+    Read the [Architecture Overview](/architecture/overview) to understand your infrastructure
+  </Step>
+  <Step title="Set Up Local Development">
+    Follow the [Developer Guide](/developer-guide/setup) for local development workflows
+  </Step>
+  <Step title="Configure Security">
+    Review the [Security Architecture](/security/overview) to implement best practices
+  </Step>
+  <Step title="Set Up Monitoring">
+    Learn about [Monitoring & Logging](/operations/monitoring) for your infrastructure
+  </Step>
+  <Step title="Review Best Practices">
+    Check out [Terraform Best Practices](/terraform/best-practices) for IaC patterns
+  </Step>
+</Steps>
+
+<Callout type="success" title="Congratulations! 🎉">
+Your infrastructure is now deployed and ready to use. 
+Check the [Architecture Overview](/architecture/overview) to understand what was created, or dive into the [Developer Guide](/developer-guide/setup) to start building on top of it.
+</Callout>
 
 ## Troubleshooting
 

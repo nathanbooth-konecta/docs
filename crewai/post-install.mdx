@@ -9,166 +9,246 @@ description: Post Installation Steps
 
 After successfully deploying the CrewAI Platform infrastructure, these initial setup steps are necessary to configure the core system, set up permissions, and prepare the environment for use.
 
----
+<Callout type="warning" title="Important">
+Complete these setup steps immediately after deployment. Skipping any steps may result in missing functionality or access issues.
+</Callout>
 
 ## ⚙️ Initial Setup Tasks
 
 These tasks must be run immediately after installation to configure the internal organization and administration access.
 
 <Steps>
-<Step title="Initialize Internal Organization">
-Run the following command to initialize the required internal organization, typically named "Default."
-
-```bash  theme={null}
-kubectl exec -it deploy/crewai-web -- rake studio:install_internal_organization
-````
-
-</Step>
-<Step title="Set Up Default Permissions"\>
-Configure the default permission set and assign the initial owner role. **Replace `admin@company.com` with your desired administrator's email address.**
-
-```bash  theme={null}
-# Replace with your admin email
-kubectl exec -it deploy/crewai-web -- \
-  rake factory:setup_permissions_defaults 'factory:add_owner[2,admin@company.com]'
-```
-
-</Step>
-<Step title="Fix Missing 'Operate' Tab (Troubleshoot)"\>
-If the **"Operate"** tab is missing in the Web UI, you may need to manually assign the `Owner` role to your user via the Rails console.
-
-**1. Shell into the `crewai-web` pod:**
-
-```bash  theme={null}
-kubectl exec --stdin --tty deploy/crewai-web -- /bin/bash
-```
-
-**2. Start the Rails console:**
-
-```bash  theme={null}
-bin/rails c
-```
-
-**3. Define the role assignment function (paste this code block):**
-
-```ruby
-def assign_owner_role(user_email)
-  user = User.find_by(email: user_email)
-  organization = Organization.find_by(name: "Default")
-  owner_role = organization.roles.find_by(name: "Owner")
-  membership = organization.memberships.find_by(user_id: user.id)
-  membership.update!(role_id: owner_role.id)
-end
-```
-
-**4. Run the assignment function (replace with your user email):**
-
-```bash
-assign_owner_role("nathan.booth@konecta.com")
-```
-
-**5. Exit the Rails shell (Ctrl+D) and refresh your browser.**
-</Step>
+  <Step title="Initialize Internal Organization" icon="building">
+    Initialize the required internal organization, typically named "Default."
+    
+    ```bash
+    kubectl exec -it deploy/crewai-web -- rake studio:install_internal_organization
+    ```
+    
+    <Callout type="info" title="What This Does">
+    Creates the default internal organization structure and initializes core system organization settings.
+    </Callout>
+  </Step>
+  
+  <Step title="Set Up Default Permissions" icon="shield">
+    Configure the default permission set and assign the initial owner role.
+    
+    <Callout type="warning" title="Replace Admin Email">
+    Replace `admin@company.com` with your actual administrator's email address.
+    </Callout>
+    
+    ```bash
+    # Replace with your admin email
+    kubectl exec -it deploy/crewai-web -- \
+      rake factory:setup_permissions_defaults 'factory:add_owner[2,admin@company.com]'
+    ```
+  </Step>
+  
+  <Step title="Fix Missing 'Operate' Tab (Troubleshoot)" icon="wrench">
+    If the **"Operate"** tab is missing in the Web UI, manually assign the `Owner` role via Rails console.
+    
+    **1. Shell into the `crewai-web` pod:**
+    ```bash
+    kubectl exec --stdin --tty deploy/crewai-web -- /bin/bash
+    ```
+    
+    **2. Start the Rails console:**
+    ```bash
+    bin/rails c
+    ```
+    
+    **3. Define the role assignment function:**
+    ```ruby
+    def assign_owner_role(user_email)
+      user = User.find_by(email: user_email)
+      organization = Organization.find_by(name: "Default")
+      owner_role = organization.roles.find_by(name: "Owner")
+      membership = organization.memberships.find_by(user_id: user.id)
+      membership.update!(role_id: owner_role.id)
+    end
+    ```
+    
+    **4. Run the assignment function:**
+    ```bash
+    assign_owner_role("nathan.booth@konecta.com")
+    ```
+    
+    **5. Exit and refresh:**
+    ```bash
+    # Exit Rails console
+    exit
+    
+    # Refresh your browser
+    ```
+    
+    <Callout type="success" title="Complete">
+    The "Operate" tab should now appear in the Web UI.
+    </Callout>
+  </Step>
 </Steps>
-
------
 
 ## 🚀 Enable Studio V2 (Optional)
 
-Studio V2 is the next-generation interface and agent capability for CrewAI.
+<Callout type="info" title="What is Studio V2?">
+Studio V2 is the next-generation interface and agent capability for CrewAI, providing enhanced features and improved user experience.
+</Callout>
 
-<Steps\>
-<Step title="Check LLM Connection and Delete Old Crews"\>
-Ensure you have an LLM connection named **`studio-v2`** configured. Then, shell into the web-service pod and delete any old Studio crew deployments.
-
-**1. Shell into the web-service pod and run:**
-
-```bash  theme={null}
-bin/rails c
-```
-
-**2. Paste and run the following commands in the Rails console:**
-
-```ruby
-Provisioner::DeleteProvisionedCrewJob.perform_later(Deployment.find_by_slug(Studio::Install::Const::STUDIO_V2_AGENT_SLUG).id)
-Provisioner::DeleteProvisionedCrewJob.perform_later(Deployment.find_by_slug(Studio::Install::Const::STUDIO_RUNNER_AGENT_SLUG).id)
-```
-
-</Step>
-<Step title="Install the Studio Agent"\>
-Exit the Rails shell (Ctrl+D) and install the core Studio Agent. This process can take up to **\~10 minutes**.
-
-```bash  theme={null}
-INTERNAL_ORGANIZATION_NAME=CrewAI ORGANIZATION_ID=1 rake studio:agent:install
-```
-
-</Step>
-<Step title="Verify Agent Status and Sync Tools"\>
-Continuously check the agent status until it reports **"Crew is Online"**. Then, sync and re-index the available tools.
-
-```bash  theme={null}
-# Check status - wait until it says "Crew is Online"
-rake studio:agent:status
-
-# Sync and re-index tools
-rake studio:tools:sync_crewai_tools
-rake studio:tools:reindex_tools
-```
-
-</Step>
-<Step title="Install the Studio Runner"\>
-Install the Studio Runner agent, which handles the execution environment. Wait for 10 minutes for the deployment process to fully complete before testing.
-
-```bash  theme={null}
-INTERNAL_ORGANIZATION_NAME=CrewAI rake studio:runner:install
-```
-
-</Step>
+<Steps>
+  <Step title="Check LLM Connection and Delete Old Crews" icon="database">
+    Ensure you have an LLM connection named **`studio-v2`** configured. Then, shell into the web-service pod and delete any old Studio crew deployments.
+    
+    **1. Shell into the web-service pod:**
+    ```bash
+    kubectl exec --stdin --tty deploy/crewai-web -- /bin/bash
+    ```
+    
+    **2. Start the Rails console:**
+    ```bash
+    bin/rails c
+    ```
+    
+    **3. Paste and run the following commands:**
+    ```ruby
+    Provisioner::DeleteProvisionedCrewJob.perform_later(Deployment.find_by_slug(Studio::Install::Const::STUDIO_V2_AGENT_SLUG).id)
+    Provisioner::DeleteProvisionedCrewJob.perform_later(Deployment.find_by_slug(Studio::Install::Const::STUDIO_RUNNER_AGENT_SLUG).id)
+    ```
+  </Step>
+  
+  <Step title="Install the Studio Agent" icon="zap">
+    Exit the Rails shell and install the core Studio Agent.
+    
+    <Callout type="info" title="Deployment Time">
+    This process can take up to **~10 minutes**. This is normal - grab a coffee!
+    </Callout>
+    
+    ```bash
+    INTERNAL_ORGANIZATION_NAME=CrewAI ORGANIZATION_ID=1 rake studio:agent:install
+    ```
+  </Step>
+  
+  <Step title="Verify Agent Status and Sync Tools" icon="refresh-cw">
+    Check the agent status until it reports **"Crew is Online"**. Then, sync and re-index the available tools.
+    
+    ```bash
+    # Check status - wait until it says "Crew is Online"
+    rake studio:agent:status
+    
+    # Sync and re-index tools
+    rake studio:tools:sync_crewai_tools
+    rake studio:tools:reindex_tools
+    ```
+    
+    <Callout type="success" title="Agent Ready">
+    Once the status shows "Crew is Online", the agent is ready for use.
+    </Callout>
+  </Step>
+  
+  <Step title="Install the Studio Runner" icon="play">
+    Install the Studio Runner agent, which handles the execution environment.
+    
+    <Callout type="warning" title="Wait for Deployment">
+    Wait for 10 minutes for the deployment process to fully complete before testing.
+    </Callout>
+    
+    ```bash
+    INTERNAL_ORGANIZATION_NAME=CrewAI rake studio:runner:install
+    ```
+  </Step>
 </Steps>
-
------
 
 ## 🌐 Accessing the Application
 
 Use the appropriate method to access the CrewAI Web UI based on your deployment environment.
 
-### Development Access (Port Forwarding)
-
-Ideal for quick testing or development environments.
-
-```bash  theme={null}
-# Forward web service port (2603 is the external port, 80 is the internal service port)
-kubectl port-forward svc/crewai-web 2603:80
-
-# Access in browser
-open http://localhost:2603
-```
-
-### Production Access (Ingress / LoadBalancer)
-
-| Method | Command to Find Endpoint | Access URL Example |
-| :--- | :--- | :--- |
-| **Ingress** | `kubectl get ing crewai-ingress` | `https://crewai.company.com` (If hostname configured) |
-| **LoadBalancer** | `kubectl get svc crewai-web` | `http://<EXTERNAL-IP>:80` (Use the EXTERNAL-IP from the output) |
-
------
+<Tabs>
+  <Tab title="Development (Port Forwarding)">
+    Ideal for quick testing or development environments.
+    
+    ```bash
+    # Forward web service port (2603 is the external port, 80 is the internal service port)
+    kubectl port-forward svc/crewai-web 2603:80
+    
+    # Access in browser
+    open http://localhost:2603
+    ```
+    
+    <Callout type="info" title="Port Forwarding">
+    This method is best for local development. The tunnel will close when you stop the command.
+    </Callout>
+  </Tab>
+  
+  <Tab title="Production (Ingress)">
+    ```bash
+    # Get your ingress endpoint
+    kubectl get ing crewai-ingress
+    ```
+    
+    Access via: `https://crewai.company.com` (if hostname configured)
+  </Tab>
+  
+  <Tab title="Production (LoadBalancer)">
+    ```bash
+    # Get the external IP
+    kubectl get svc crewai-web
+    ```
+    
+    Access via: `http://<EXTERNAL-IP>:80` (Use the EXTERNAL-IP from the output)
+  </Tab>
+</Tabs>
 
 ## ✅ Verification Steps
 
 After completing all setup tasks, verify the platform's readiness:
 
-1.  **Access the Web UI** using one of the methods above.
-2.  **Log in** with your configured authentication provider.
-3.  **Verify admin access** by confirming the presence of administrative links/tabs.
-4.  **Test basic functionality** by creating a test crew or project.
-5.  **Check background workers** for successful job processing:
+<Steps>
+  <Step title="Access the Web UI">
+    Use one of the access methods above to open the CrewAI interface in your browser.
+  </Step>
+  
+  <Step title="Log In">
+    Log in with your configured authentication provider.
+  </Step>
+  
+  <Step title="Verify Admin Access">
+    Confirm the presence of administrative links and tabs.
+  </Step>
+  
+  <Step title="Test Basic Functionality">
+    Create a test crew or project to verify the system is working.
+  </Step>
+  
+  <Step title="Check Background Workers">
+    Verify background job processing:
+    
+    ```bash
+    kubectl logs -l app=crewai-worker --tail=50
+    ```
+    
+    <Callout type="success" title="Ready to Go">
+    If you see successful job logs, your platform is fully configured and ready for use!
+    </Callout>
+  </Step>
+</Steps>
 
-<!-- end list -->
+## Next Steps
 
-```bash  theme={null}
-kubectl logs -l app=crewai-worker --tail=50
-```
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="diagram-project" href="/architecture/overview">
+    Understand your infrastructure design
+  </Card>
+  <Card title="Developer Guide" icon="code" href="/developer-guide/setup">
+    Set up your local development environment
+  </Card>
+  <Card title="Monitoring & Logging" icon="activity" href="/operations/monitoring">
+    Configure monitoring and logging
+  </Card>
+  <Card title="Security Best Practices" icon="shield" href="/security/overview">
+    Implement security controls
+  </Card>
+</CardGroup>
 
------
+<Callout type="success" title="Congratulations! 🎉">
+Your CrewAI platform is now fully installed and configured. Start creating and deploying crews!
 
-To find navigation and other pages in this documentation, fetch the llms.txt file at: https://enterprise-docs.crewai.com/llms.txt
+For more information, visit the [main documentation](/) or explore the [Architecture Overview](/architecture/overview).
+</Callout>

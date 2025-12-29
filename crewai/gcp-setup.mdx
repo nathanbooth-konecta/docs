@@ -1,0 +1,1193 @@
+export const metadata = {
+  title: "CrewAI GCP Infrastructure",
+  description: "Comprehensive Terraform IaC for CrewAI platform deployment on Google Cloud Platform",
+};
+
+# 🚀 CrewAI GCP Infrastructure Setup Blueprint
+
+A **production-ready Terraform Infrastructure-as-Code (IaC)** blueprint that automates the complete deployment of the **CrewAI Enterprise Platform** on **Google Cloud Platform (GCP)**. This project handles everything from organizational hierarchy setup to a fully configured Kubernetes cluster with all required backend services.
+
+## 📋 Table of Contents
+
+- [Project Overview](#project-overview)
+- [What Gets Created](#what-gets-created)
+- [Technology Stack](#technology-stack)
+- [Prerequisites](#prerequisites)
+- [Quick Start Guide](#quick-start-guide)
+- [Project Structure](#project-structure)
+- [Configuration Guide](#configuration-guide)
+- [Deployment Instructions](#deployment-instructions)
+- [Key Features](#key-features)
+- [Terraform Workflow](#terraform-workflow)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
+## 📖 Project Overview
+
+### Purpose
+
+This blueprint provides a **complete, enterprise-grade infrastructure** for deploying the CrewAI platform on GCP. Rather than manually configuring dozens of GCP services, you provide a few configuration variables, and Terraform automatically provisions:
+
+- Organizational folder hierarchy
+- GCP projects with proper tagging and billing
+- GCP APIs and services
+- Networking infrastructure (VPC, NAT, firewalls)
+- Kubernetes cluster (GKE Standard)
+- Database servers (Cloud SQL PostgreSQL with HA and read replicas)
+- Storage buckets (with encryption and versioning)
+- Secrets management
+- IAM roles and service accounts
+- Monitoring and logging infrastructure
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    GCP Organization                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────────┐        ┌──────────────────────────────┐   │
+│  │  Folder Hierarchy│        │  GCP Project Infrastructure  │   │
+│  │  (Org Structure) │        │  ├─ APIs (50+)              │   │
+│  │  ├─ Root         │        │  ├─ Service Accounts        │   │
+│  │  ├─ Env          │        │  ├─ IAM Roles               │   │
+│  │  ├─ Region       │        │  ├─ Billing & Budget        │   │
+│  │  └─ Country      │        │  └─ Cloud Functions         │   │
+│  └──────────────────┘        └──────────────────────────────┘   │
+│           │                            │                         │
+│           └─────────────┬──────────────┘                         │
+│                         │                                        │
+│        ┌────────────────┴───────────────┐                       │
+│        │  CrewAI Platform Infrastructure │                       │
+│        │                                │                       │
+│  ┌─────┴──────────┐  ┌────────────────┐│ ┌──────────────────┐  │
+│  │   Networking   │  │   Storage      ││ │   Kubernetes     │  │
+│  │   ├─ VPC       │  │   ├─ Data      ││ │   ├─ Cluster     │  │
+│  │   ├─ Subnets   │  │   ├─ Logs      ││ │   ├─ Namespaces  │  │
+│  │   ├─ NAT       │  │   └─ Backups   ││ │   └─ Add-ons     │  │
+│  │   └─ Firewall  │  └────────────────┘│ └──────────────────┘  │
+│  └────────────────┘                    │                       │
+│                                ┌───────┴──────────┐             │
+│                                │  Database        │             │
+│                                │  ├─ Primary DB   │             │
+│                                │  ├─ Replicas     │             │
+│                                │  └─ Backups      │             │
+│                                └──────────────────┘             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## 🎯 What Gets Created
+
+### 📦 Project Foundation
+
+<CardGroup cols={2}>
+  <Card title="GCP Project" icon="cube">
+    Automatically created with organizational labels and metadata
+  </Card>
+  <Card title="Folder Hierarchy" icon="folder-open">
+    Multi-level structure: Environment → Region → Country
+  </Card>
+  <Card title="APIs" icon="zap">
+    Enables all required Google Cloud APIs for the platform
+  </Card>
+  <Card title="Service Accounts" icon="shield">
+    Dedicated accounts with least-privilege IAM roles
+  </Card>
+  <Card title="Budget Management" icon="dollar-sign">
+    Automated budget alerts with Cloud Functions
+  </Card>
+  <Card title="Audit Logging" icon="file-text">
+    Centralized logging for organization audits
+  </Card>
+</CardGroup>
+
+### 🚀 CrewAI Platform Infrastructure
+
+#### Compute & Orchestration
+
+**GKE Cluster** - Google Kubernetes Engine Standard cluster
+
+<CardGroup cols={2}>
+  <Card title="Private Nodes" icon="lock">
+    Enhanced security with no public IPs
+  </Card>
+  <Card title="Public Control Plane" icon="sliders-horizontal">
+    Accessible for administration and monitoring
+  </Card>
+  <Card title="Auto Upgrades" icon="refresh-cw">
+    Automated node version management
+  </Card>
+  <Card title="Observability" icon="activity">
+    Comprehensive logging and monitoring integration
+  </Card>
+  <Card title="Fine-grained Access" icon="key">
+    Custom service accounts with least-privilege
+  </Card>
+</CardGroup>
+
+#### Data Layer
+- **Cloud SQL PostgreSQL**:
+  - Regional HA (High Availability) across zones
+  - PostgreSQL 16 with automatic backups
+  - Read replicas for scaling read operations
+  - Point-in-time recovery (7 days retention)
+  - Private networking (no public IP)
+  - SSL/TLS encryption enforced
+  
+#### Storage
+- **GCS Buckets**:
+  - Data bucket (versioning, encryption enabled)
+  - Logs bucket (lifecycle policies)
+  - Automatic backup and retention policies
+
+#### Networking
+- **VPC Network**: Custom VPC with multi-zone subnets
+- **Cloud NAT**: Secure outbound connectivity for private nodes
+- **Firewall Rules**: 
+  - Internal communication allowed
+  - GKE cluster communication configured
+  - SSH access restricted
+- **Secondary IP Ranges**: Dedicated ranges for pods and services
+
+#### Security & Secrets
+- **Secret Manager**: Secure storage for database credentials
+- **IAM Roles**: Fine-grained access control
+- **Artifact Registry**: Private Docker image repository
+- **SSL/TLS**: Encrypted communication throughout
+
+### 📊 Monitoring & Observability
+
+- **Cloud Logging**: Centralized application and system logs
+- **Cloud Monitoring**: Metrics and alerting
+- **Pub/Sub**: Event-driven notifications
+- **Cloud Scheduler**: Job automation
+
+## 🛠️ Technology Stack
+
+### Infrastructure as Code
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| **IaC Framework** | Terraform | ≥ 1.0.0 |
+| **Primary Cloud** | Google Cloud Platform (GCP) | Latest |
+| **State Management** | AWS S3 (Konecta Standard) | - |
+| **Linting** | TFLint | Latest |
+| **Formatting** | Terraform fmt | Built-in |
+
+### GCP Services
+
+| Service | Purpose | Configuration |
+|---------|---------|----------------|
+| **Compute Engine** | VM infrastructure | Auto-managed by GKE |
+| **Kubernetes Engine (GKE)** | Container orchestration | Standard cluster, private nodes |
+| **Cloud SQL** | Managed PostgreSQL | Regional HA with replicas |
+| **Cloud Storage (GCS)** | Object storage | Encrypted, versioned buckets |
+| **VPC Network** | Virtual networking | Multi-zone, custom subnets |
+| **Cloud NAT** | Secure egress | For private node outbound traffic |
+| **Cloud Load Balancing** | Traffic distribution | Auto-configured with GKE |
+| **Secret Manager** | Secrets storage | Database credentials |
+| **Artifact Registry** | Docker images | Private repository |
+| **Cloud Pub/Sub** | Messaging | Budget alerts, events |
+| **Cloud Scheduler** | Job execution | Automated tasks |
+| **Cloud Functions** | Serverless compute | Budget monitoring |
+
+### Terraform Providers
+
+```hcl
+google       ~> 7.0   # GCP resource management
+kubernetes   ~> 2.23  # Kubernetes resource management
+random       ~> 3.0   # Random password generation
+http         ~> 3.4   # IP detection for security groups
+```
+
+## 📋 Prerequisites
+
+<Callout type="warning" title="Read Before Starting">
+Missing prerequisites can cause deployment failures. Ensure all tools are installed and properly configured.
+</Callout>
+
+### Required Tools
+
+<Tabs>
+  <Tab title="macOS (Homebrew)">
+  ```bash
+  brew install terraform gcloud-cli kubectl awscli
+  ```
+  </Tab>
+  <Tab title="Ubuntu/Debian">
+  ```bash
+  sudo apt-get update && \
+  sudo apt-get install -y terraform google-cloud-sdk kubectl awscli
+  ```
+  </Tab>
+  <Tab title="Manual Installation">
+  - [Terraform](https://www.terraform.io/downloads.html) - Version 1.0.0 or higher
+  - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) - Latest version
+  - [kubectl](https://kubernetes.io/docs/tasks/tools/) - Latest version
+  - [AWS CLI v2](https://aws.amazon.com/cli/) - For state management
+  </Tab>
+</Tabs>
+
+### GCP Requirements
+
+<CardGroup cols={2}>
+  <Card title="GCP Organization" icon="building">
+    Active organization account with proper access
+  </Card>
+  <Card title="Billing Account" icon="credit-card">
+    Linked to your organization
+  </Card>
+  <Card title="Organization Admin Role" icon="shield">
+    To create folders and projects
+  </Card>
+  <Card title="Credentials" icon="key">
+    Service account with appropriate permissions
+  </Card>
+</CardGroup>
+
+### AWS Requirements (for Terraform State)
+
+<CardGroup cols={2}>
+  <Card title="AWS Account" icon="aws">
+    Access to S3 bucket `konecta-terraform-cuentas`
+  </Card>
+  <Card title="SSO Profile" icon="login">
+    `default_core_irlanda` configured
+  </Card>
+  <Card title="S3 Permissions" icon="lock">
+    Read/write access to state bucket
+  </Card>
+</CardGroup>
+
+### Verify Installation
+
+Confirm all tools are installed correctly:
+
+```bash
+terraform version
+gcloud --version
+kubectl version --client
+aws --version
+```
+
+<Callout type="success" title="Installation Complete">
+If all commands return version information, you're ready to proceed!
+</Callout>
+
+## 🚀 Quick Start Guide
+
+<Steps>
+  <Step title="Clone Repository" icon="git">
+    ```bash
+    git clone git@bitbucket.org:grupokonecta/crewai-gcp-infra-dev.git
+    cd crewai-gcp-infra-dev
+    ```
+  </Step>
+  
+  <Step title="Authenticate">
+    ```bash
+    # Authenticate with GCP
+    gcloud auth application-default login
+    
+    # Configure AWS SSO for Terraform state
+    aws sso login --profile default_core_irlanda
+    ```
+  </Step>
+  
+  <Step title="Configure Variables">
+    ```bash
+    cp terraform.auto.tfvars.example terraform.auto.tfvars
+    # Edit terraform.auto.tfvars with your values
+    ```
+  </Step>
+  
+  <Step title="Validate">
+    ```bash
+    make validate
+    ```
+    This runs:
+    - `terraform fmt` - Code formatting
+    - `terraform validate` - Syntax checking  
+    - `tflint` - Best practices linting
+  </Step>
+  
+  <Step title="Initialize & Plan">
+    ```bash
+    make init
+    make plan
+    ```
+    Preview the 70+ resources that will be created.
+  </Step>
+  
+  <Step title="Deploy Infrastructure" icon="check">
+    ```bash
+    make apply
+    ```
+    <Callout type="info" title="Deployment Time">
+    This takes approximately 15-20 minutes. Grab a coffee!
+    </Callout>
+  </Step>
+  
+  <Step title="Verify Deployment">
+    ```bash
+    gcloud container clusters get-credentials crewai-cluster \
+      --region <your-region> \
+      --project <your-project-id>
+    
+    kubectl get nodes
+    ```
+  </Step>
+</Steps>
+
+## 📁 Project Structure
+
+### Root Directory Files
+
+```
+crewai-gcp-infra-dev/
+├── main.tf                    # Main module orchestration (70+ resources)
+├── variables.tf               # Input variable definitions
+├── outputs.tf                 # Output definitions
+├── backend.tf                 # Terraform state backend (AWS S3)
+├── terraform.auto.tfvars      # Variable values (GIT IGNORED)
+├── Makefile                   # DevOps task automation
+├── README.mdx                 # This file
+├── bitbucket-pipelines.yml    # CI/CD pipeline configuration
+└── modules/                   # Terraform modules directory
+```
+
+### Module Structure
+
+#### Core Modules (GCP Project Setup)
+
+```
+modules/
+├── folders/
+│   ├── folders.tf            # Organizational folder hierarchy
+│   ├── variables.tf          # Folder-specific variables
+│   ├── outputs.tf            # Folder outputs (folder IDs)
+│   └── terraform.tf          # Provider configuration
+│
+├── projects/
+│   ├── projects.tf           # GCP project creation
+│   ├── variables.tf          # Project metadata variables
+│   ├── outputs.tf            # Project outputs (IDs, numbers)
+│   └── terraform.tf          # Provider configuration
+│
+├── apis/
+│   ├── apis.tf               # 50+ GCP API enablement
+│   ├── variables.tf          # API variables
+│   ├── outputs.tf            # API output references
+│   └── terraform.tf          # Provider configuration
+│
+├── iam_pre/
+│   ├── iam_pre.tf            # Pre-deployment IAM setup
+│   ├── variables.tf          # IAM variables
+│   ├── outputs.tf            # IAM role outputs
+│   └── terraform.tf          # Provider configuration
+│
+├── iam/
+│   ├── iam.tf                # Main IAM roles and bindings
+│   ├── variables.tf          # IAM variables
+│   ├── outputs.tf            # Service account outputs
+│   └── terraform.tf          # Provider configuration
+│
+├── saccounts/
+│   ├── saccounts.tf          # Service account creation
+│   ├── variables.tf          # Service account variables
+│   ├── outputs.tf            # Service account outputs
+│   └── terraform.tf          # Provider configuration
+│
+├── topics/
+│   ├── topics.tf             # Pub/Sub topic creation
+│   ├── variables.tf          # Topic variables
+│   ├── outputs.tf            # Topic outputs
+│   └── terraform.tf          # Provider configuration
+│
+├── buckets/
+│   ├── buckets.tf            # GCS bucket creation
+│   ├── variables.tf          # Bucket variables
+│   ├── outputs.tf            # Bucket outputs
+│   └── terraform.tf          # Provider configuration
+│
+├── billing/
+│   ├── billing.tf            # Budget and billing alerts
+│   ├── variables.tf          # Billing variables
+│   ├── outputs.tf            # Billing outputs
+│   ├── provider.tf           # Billing provider config
+│   └── terraform.tf          # Provider configuration
+│
+├── cfunctions/
+│   ├── cfunctions.tf         # Cloud Functions for budget monitoring
+│   ├── variables.tf          # Function variables
+│   ├── outputs.tf            # Function outputs
+│   └── terraform.tf          # Provider configuration
+│
+└── crewai/                   # CrewAI Platform Modules
+    │
+    ├── cluster/              # GKE Cluster
+    │   ├── main.tf          # Cluster configuration
+    │   ├── variables.tf      # Cluster variables
+    │   ├── outputs.tf        # Cluster outputs (endpoint, credentials)
+    │   └── README.md         # Cluster module documentation
+    │
+    ├── cluster-addons/       # Kubernetes Resources
+    │   ├── main.tf          # Namespaces, secrets, RBAC
+    │   ├── variables.tf      # Add-on variables
+    │   ├── outputs.tf        # Add-on outputs
+    │   └── README.md         # Add-ons documentation
+    │
+    ├── networking/           # VPC Infrastructure
+    │   ├── main.tf          # VPC, subnets, firewall rules
+    │   ├── variables.tf      # Networking variables
+    │   ├── outputs.tf        # Network outputs (VPC ID, subnet IDs)
+    │   └── README.md         # Networking documentation
+    │
+    ├── database/             # Cloud SQL PostgreSQL
+    │   ├── main.tf          # Database instance, replicas, backups
+    │   ├── variables.tf      # Database variables
+    │   ├── outputs.tf        # Database connection details
+    │   └── README.md         # Database documentation
+    │
+    ├── storage/              # GCS Buckets for Platform
+    │   ├── main.tf          # Data and logs buckets
+    │   ├── variables.tf      # Storage variables
+    │   ├── outputs.tf        # Bucket names and IDs
+    │   └── README.md         # Storage documentation
+    │
+    ├── repository/           # Artifact Registry
+    │   ├── main.tf          # Docker image repository
+    │   ├── variables.tf      # Repository variables
+    │   ├── outputs.tf        # Repository outputs
+    │   └── README.md         # Repository documentation
+    │
+    ├── secrets/              # Secret Manager
+    │   ├── main.tf          # Database credentials storage
+    │   ├── variables.tf      # Secrets variables
+    │   ├── outputs.tf        # Secret outputs
+    │   └── README.md         # Secrets documentation
+    │
+    └── crewai-platform/      # Platform Orchestration
+        ├── main.tf          # Calls all submodules
+        ├── variables.tf      # Platform variables
+        ├── outputs.tf        # Platform summary outputs
+        └── README.md         # Platform documentation
+```
+
+### Module Dependency Graph
+
+```
+folders
+  ↓
+projects → iam_pre ← billing
+  ↓         ↓ ↓ ↓
+ apis ← service_accounts
+  ↓         ↓
+topics  cfunctions
+  ↓         ↓
+buckets ←──┘
+  ↓
+iam
+  ↓
+crewai-platform/
+  ├── networking
+  ├── repository
+  ├── storage
+  ├── database ← networking
+  ├── secrets ← database
+  ├── cluster ← networking, repository
+  └── cluster-addons ← cluster, secrets
+```
+
+## ⚙️ Configuration Guide
+
+### Essential Variables
+
+All variables are defined in [variables.tf](variables.tf). Key variables you must configure:
+
+#### GCP Organization Structure
+
+```hcl
+# Organizational hierarchy configuration
+organization_id     = "123456789"      # GCP Organization ID
+root_folder_name    = "Global IT"      # Root folder name
+env_folder_name     = "DEV"            # Environment (DEV, PROD, STG, LGC)
+region_folder_name  = "CORP"           # Region/Hub (CORP, LATAM, IBERIA)
+country_folder_name = "CO"             # Country (CO, BR, AR, etc.)
+```
+
+#### Project Configuration
+
+```hcl
+# Project metadata
+project_id   = "kn-co-globalit-svc-crewai-dev"  # Unique project ID
+project_name = "CREWAI-DEV-CO"                  # Display name
+description  = "CrewAI Platform Development"
+gcp_region   = "us-central1"                     # GCP region
+billing_account = "0156A6-7B8C9D-E2F3A4"       # Billing account ID
+```
+
+#### Project Tags
+
+```hcl
+# Organizational tagging
+department   = "Global IT"
+owner        = "your-name@company.com"
+country      = "CO"                    # ISO 3166 alpha-2 code
+client       = "Konecta"
+campaign     = "CrewAI Initiative"
+ceco         = "1234"                  # Cost center code
+creation_date = "2025-12-29"
+```
+
+#### CrewAI Platform Configuration
+
+```hcl
+# Network Configuration
+vpc_cidr   = "10.0.0.0/16"     # CIDR block for VPC
+zone_count = 3                  # Number of zones (2-3 for HA)
+
+# Storage Configuration
+gcs_crewai_data_suffix = "crewai-data"   # Bucket suffix: {project_id}-{suffix}
+gcs_crewai_logs_suffix = "crewai-logs"   # Bucket suffix: {project_id}-{suffix}
+
+# Cluster Configuration
+cluster_name                = "crewai-cluster"
+cluster_initial_node_count  = 1             # Starting number of nodes
+cluster_node_machine_type   = "e2-standard-4"  # Machine type for nodes
+cluster_authorized_networks = []            # Auto-populated with Terraform runner IP
+
+# Database Configuration
+db_instance_name      = "crewai-db"
+db_instance_tier      = "db-custom-4-16384"  # 4 vCPU, 16GB RAM
+db_edition            = "ENTERPRISE"         # Cloud SQL edition
+db_database_name      = "crewai"
+db_master_username    = "crewai_admin"
+reader_instance_count = 2                    # Read replicas
+```
+
+#### Budget Configuration
+
+```hcl
+# Budget monitoring
+budget            = "800"                # Monthly budget in EUR
+sa_control_spent  = "budget-controller"  # Service account for budget checks
+```
+
+### Variable Validation
+
+The configuration includes built-in validations:
+
+```hcl
+# VPC CIDR must be valid
+vpc_cidr = "10.0.0.0/16"  # ✅ Valid CIDR block
+
+# Zone count must be 2 or 3 for HA
+zone_count = 3  # ✅ Between 2-3
+
+# Machine type influences costs
+cluster_node_machine_type = "e2-standard-4"  # ✅ Valid GCP machine type
+```
+
+## 🚀 Deployment Instructions
+
+### Step 1: Prepare Your Environment
+
+<Callout type="warning" title="Critical Prerequisites">
+Ensure you have completed all prerequisites. Incorrect configuration can result in failed deployments or unexpected charges.
+</Callout>
+
+<Tabs>
+  <Tab title="Clone & Authenticate">
+    ```bash
+    # Clone repository
+    git clone <your-repository-url>
+    cd crewai-gcp-infra-dev
+    
+    # Authenticate with GCP
+    gcloud auth application-default login
+    ```
+  </Tab>
+  <Tab title="Configure State Management">
+    ```bash
+    # Setup AWS credentials for Terraform state
+    aws sso login --profile default_core_irlanda
+    
+    # Verify access
+    aws sts get-caller-identity --profile default_core_irlanda
+    ```
+  </Tab>
+  <Tab title="Verify Installation">
+    ```bash
+    terraform version      # Should show 1.0.0 or higher
+    gcloud --version       # Should show latest
+    kubectl version --client
+    tflint --version
+    ```
+  </Tab>
+</Tabs>
+
+### Step 2: Configure Variables
+
+```bash
+cp terraform.auto.tfvars.example terraform.auto.tfvars
+nano terraform.auto.tfvars  # or vim, code, etc.
+```
+
+<Callout type="info" title="Required Configuration Sections">
+  <AccordionGroup>
+    <Accordion title="Organizational Settings">
+      - `organization_id`: Your GCP Organization ID
+      - `root_folder_name`: Root folder name (e.g., "Global IT")
+      - `env_folder_name`: Environment (DEV, PROD, STG)
+      - `region_folder_name`: Region/Hub (CORP, LATAM)
+    </Accordion>
+    <Accordion title="Project Details">
+      - `project_id`: Unique project ID
+      - `project_name`: Display name
+      - `gcp_region`: GCP region (e.g., us-central1)
+      - `billing_account`: Billing account ID
+    </Accordion>
+    <Accordion title="Billing & Tags">
+      - `budget`: Monthly budget (EUR)
+      - `department`: Department name
+      - `country`: ISO country code
+      - `ceco`: Cost center code
+    </Accordion>
+    <Accordion title="CrewAI Platform">
+      - `vpc_cidr`: VPC CIDR block
+      - `cluster_name`: GKE cluster name
+      - `db_instance_tier`: Database tier
+      - `cluster_node_machine_type`: Node machine type
+    </Accordion>
+  </AccordionGroup>
+</Callout>
+
+### Step 3: Validate Configuration
+
+```bash
+make validate
+```
+
+<Callout type="info" title="What Gets Validated">
+  - <Badge>✓</Badge> **terraform fmt** - Formats your code
+  - <Badge>✓</Badge> **terraform validate** - Checks HCL syntax
+  - <Badge>✓</Badge> **tflint** - Checks best practices
+
+  Expected output: `Success: no issues found`
+</Callout>
+
+### Step 4: Initialize Terraform
+
+```bash
+make init
+```
+
+<Callout type="success" title="Expected Behavior">
+Terraform downloads required providers and initializes the state backend. This is a one-time operation.
+</Callout>
+
+### Step 5: Preview Infrastructure Changes
+
+```bash
+make plan
+```
+
+<Callout type="info" title="Plan Output">
+  Expected: `Plan: 70 to add, 0 to change, 0 to destroy`
+  
+  This shows the 70+ resources that will be created in GCP.
+</Callout>
+
+```bash
+# Optional: Save plan to file for review
+terraform plan -out=tfplan
+```
+
+### Step 6: Deploy Infrastructure
+
+```bash
+make apply
+```
+
+<Callout type="warning" title="Confirm Deployment">
+  When prompted `Do you want to perform these actions?`, type **yes** to confirm.
+  
+  This will create 70+ actual resources in GCP. Deployment takes **15-20 minutes**.
+</Callout>
+
+<Callout type="success" title="Deployment Complete!" icon="check">
+  Terraform will output important information you'll need later:
+  - <Badge>Cluster endpoint</Badge>
+  - <Badge>Database connection details</Badge>
+  - <Badge>Bucket names</Badge>
+  - <Badge>Service account details</Badge>
+  
+  **Save this output for later reference!**
+</Callout>
+
+### Step 7: Verify Deployment
+
+<Tabs>
+  <Tab title="Cluster Access">
+    ```bash
+    gcloud container clusters get-credentials crewai-cluster \
+      --region <your-gcp-region> \
+      --project <your-project-id>
+    
+    # Verify connectivity
+    kubectl get nodes
+    ```
+  </Tab>
+  <Tab title="Cluster Resources">
+    ```bash
+    kubectl get pods --all-namespaces
+    kubectl get services --all-namespaces
+    kubectl get deployments --all-namespaces
+    ```
+  </Tab>
+  <Tab title="Database">
+    ```bash
+    gcloud sql instances describe crewai-db \
+      --project <your-project-id>
+    ```
+  </Tab>
+  <Tab title="Storage">
+    ```bash
+    gsutil ls
+    gsutil ls -r gs://<bucket-name>/
+    ```
+  </Tab>
+</Tabs>
+
+## 🎯 Key Features
+
+<CardGroup cols={2}>
+  <Card title="Complete Automation" icon="zap">
+    Single `make apply` command creates 70+ GCP resources. No manual configuration needed.
+  </Card>
+  <Card title="Enterprise Security" icon="shield">
+    Private nodes, encrypted DBs, Secret Manager, fine-grained IAM, VPC isolation.
+  </Card>
+  <Card title="High Availability" icon="activity">
+    Multi-zone database with failover, read replicas, HA cluster, point-in-time recovery.
+  </Card>
+  <Card title="Production Ready" icon="check">
+    Comprehensive logging, budget alerts, auto-upgrades, health checks, versioned storage.
+  </Card>
+  <Card title="Cost Optimized" icon="dollar-sign">
+    Auto-scaling, committed discounts, right-sizing, budget monitoring, efficient scheduling.
+  </Card>
+  <Card title="Developer Friendly" icon="code">
+    Clear Makefile, full docs, modular design, CI/CD ready, pre-commit hooks.
+  </Card>
+</CardGroup>
+
+## 🔄 Terraform Workflow
+
+### Understanding Terraform State
+
+```
+┌──────────────┐       ┌─────────────────┐       ┌──────────────────┐
+│   Your Code  │ ---→  │ Terraform State │ ---→  │  GCP Resources   │
+│  (.tf files) │       │   (AWS S3)      │       │  (70+ services)  │
+└──────────────┘       └─────────────────┘       └──────────────────┘
+       ↑                                                   │
+       │                                                   │
+       └───────────────── terraform plan/apply ──────────┘
+```
+
+State is stored in **AWS S3** (Konecta standard):
+- **Bucket**: `konecta-terraform-cuentas`
+- **Key**: `gcp/global-it/dev/dev-corp/dev-corp-co/kn-co-globalit-svc-crewai-dev`
+- **Encryption**: Enabled by default
+
+### Common Terraform Commands
+
+```bash
+# ✅ Format code (idiomatic style)
+make format
+terraform fmt -recursive
+
+# ✅ Validate syntax
+make validate
+terraform validate
+
+# ✅ Lint best practices
+make lint
+tflint --recursive
+
+# ✅ Preview changes
+make plan
+terraform plan -out=tfplan
+
+# ✅ Apply changes
+make apply
+terraform apply tfplan
+
+# ✅ Destroy infrastructure
+make destroy
+terraform destroy
+
+# ✅ View state
+terraform state list
+terraform state show <resource>
+
+# ✅ Refresh state
+terraform refresh
+
+# ✅ Get outputs
+terraform output
+```
+
+### Advanced Operations
+
+#### Targeting Specific Resources
+
+```bash
+# Apply changes to specific module
+terraform apply -target=module.crewai_platform.module.cluster
+
+# Useful for testing individual components
+```
+
+#### Importing Existing Resources
+
+```bash
+# If resources exist outside Terraform
+terraform import google_kubernetes_cluster.main \
+  projects/PROJECT_ID/zones/ZONE/clusters/CLUSTER_NAME
+```
+
+#### Debugging
+
+```bash
+# Enable debug logging
+TF_LOG=DEBUG terraform plan
+
+# Save detailed logs
+TF_LOG=DEBUG terraform apply -out=tfplan > debug.log 2>&1
+```
+
+## 📊 Resource Overview
+
+### Approximate Resource Count by Module
+
+| Module | Resource Count | Deployment Time |
+|--------|---|---|
+| Folders | 3 | 30 seconds |
+| Projects | 1 | 1 minute |
+| APIs | 50+ | 2 minutes |
+| Service Accounts | 3-5 | 1 minute |
+| IAM Roles | 10+ | 2 minutes |
+| Networking | 8-10 | 2 minutes |
+| Storage | 2 | 30 seconds |
+| Database | 3-5 | 5-10 minutes |
+| Cluster | 1 | 8-12 minutes |
+| **Total** | **70-80** | **15-20 minutes** |
+
+### Cost Estimation
+
+Based on recommended configuration:
+
+| Component | Estimated Cost | Notes |
+|-----------|---|---|
+| GKE Cluster | $150-200/month | 3 node cluster |
+| Cloud SQL (HA + replicas) | $300-400/month | 2 read replicas |
+| VPC & Load Balancing | $30-50/month | Multi-zone |
+| Storage (GCS) | $10-20/month | Data + logs |
+| Secrets & Services | $5-10/month | Secret Manager |
+| **Total Estimated** | **$495-680/month** | **Production config** |
+
+<Callout type="success" title="Save Money in Development" icon="dollar-sign">
+  <AccordionGroup>
+    <Accordion title="For Development Environments">
+      - Use `e2-standard-2` instead of `e2-standard-4`
+      - Set `cluster_initial_node_count = 1`
+      - Set `reader_instance_count = 0` (no replicas)
+      - **Estimated Savings**: $300-400/month
+    </Accordion>
+  </AccordionGroup>
+</Callout>
+
+## 🐛 Troubleshooting
+
+### Common Issues and Solutions
+
+<AccordionGroup>
+  <Accordion title="Terraform Init Fails" icon="alert-circle">
+    **Error**: `Error: Failed to download module`
+    
+    ```bash
+    # Clear cache and retry
+    rm -rf .terraform
+    terraform init
+    
+    # Check provider configuration
+    cat backend.tf
+    ```
+  </Accordion>
+  
+  <Accordion title="Authentication Errors" icon="lock">
+    **Error**: `Error: Google Cloud credentials not found`
+    
+    ```bash
+    # Re-authenticate with GCP
+    gcloud auth application-default login
+    gcloud auth list
+    
+    # For AWS state backend
+    aws sso login --profile default_core_irlanda
+    ```
+  </Accordion>
+  
+  <Accordion title="API Not Enabled" icon="zap">
+    **Error**: `Error: Service [...] has not been used in project`
+    
+    ```bash
+    # APIs auto-enable in modules/apis
+    make plan
+    make apply
+    
+    # Or enable manually
+    gcloud services enable compute.googleapis.com --project=PROJECT_ID
+    ```
+  </Accordion>
+  
+  <Accordion title="Insufficient Quota" icon="alert">
+    **Error**: `Error: Quota exceeded for quota metric`
+    
+    ```bash
+    gcloud compute project-info describe --project=PROJECT_ID
+    ```
+    
+    Then request quota increase in GCP Console:
+    **IAM & Admin** → **Quotas** → **Select service** → **Request quota increase**
+  </Accordion>
+  
+  <Accordion title="GKE Cluster Timeout" icon="clock">
+    **Error**: `Error: timeout while waiting for cluster creation`
+    
+    ```bash
+    gcloud container clusters describe crewai-cluster \
+      --region=REGION \
+      --project=PROJECT_ID
+    
+    gcloud container operations list --project=PROJECT_ID
+    
+    # If stuck, retry
+    make destroy
+    make apply
+    ```
+  </Accordion>
+  
+  <Accordion title="Database Connection Fails" icon="database">
+    **Error**: `Error: failed to connect to database`
+    
+    ```bash
+    gcloud sql instances describe crewai-db --project=PROJECT_ID
+    gcloud compute firewall-rules list --project=PROJECT_ID
+    gcloud services vpc-peerings list \
+      --service=servicenetworking.googleapis.com \
+      --project=PROJECT_ID
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Debug Terraform" icon="wrench">
+    ```bash
+    TF_LOG=DEBUG terraform apply
+    terraform output
+    ```
+  </Card>
+  <Card title="Check GCP Status" icon="activity">
+    ```bash
+    gcloud compute operations list \
+      --project=PROJECT_ID
+    ```
+  </Card>
+  <Card title="Inspect State" icon="database">
+    ```bash
+    terraform state show \
+      module.crewai_platform
+    ```
+  </Card>
+</CardGroup>
+
+## 📚 Additional Resources
+
+### Module Documentation
+
+Each module includes its own README:
+
+- [Cluster Module](modules/crewai/cluster/README.md) - GKE configuration
+- [Database Module](modules/crewai/database/README.md) - Cloud SQL setup
+- [Networking Module](modules/crewai/networking/README.md) - VPC configuration
+- [Cluster Add-ons Module](modules/crewai/cluster-addons/README.md) - K8s resources
+
+### External References
+
+- [Terraform Documentation](https://www.terraform.io/docs)
+- [Google Cloud Provider Documentation](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
+- [GKE Best Practices](https://cloud.google.com/kubernetes-engine/docs/best-practices)
+- [Cloud SQL Best Practices](https://cloud.google.com/sql/docs/postgres/best-practices)
+
+## 🤝 Contributing
+
+### Development Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd crewai-gcp-infra-dev
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Validate changes
+make validate
+
+# Commit with clear messages
+git commit -m "feat: add new feature description"
+
+# Push and create pull request
+git push origin feature/your-feature-name
+```
+
+### Code Style
+
+All code must pass:
+
+```bash
+# Format code consistently
+terraform fmt -recursive
+
+# Validate syntax
+terraform validate
+
+# Check best practices
+tflint --recursive
+```
+
+### Pre-commit Hooks
+
+Enable pre-commit hooks to validate automatically:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Run manually
+pre-commit run --all-files
+```
+
+### Contribution Guidelines
+
+1. **Create Feature Branch**: `git checkout -b feature/description`
+2. **Write Code**: Follow Terraform style guide
+3. **Run Validation**: `make validate` (must pass)
+4. **Test Deployment**: `terraform plan` in test environment
+5. **Update Documentation**: Keep README and module docs current
+6. **Submit PR**: Include clear description of changes
+7. **Code Review**: Address feedback from maintainers
+8. **Merge**: Squash commits into main
+
+### Reporting Issues
+
+When reporting bugs, include:
+
+- Terraform version: `terraform version`
+- GCP SDK version: `gcloud --version`
+- Exact error message and stack trace
+- Steps to reproduce the issue
+- Your environment details (region, configuration)
+
+**Example Issue Template**:
+
+```markdown
+## Bug Report
+
+### Description
+Brief description of the issue
+
+### Steps to Reproduce
+1. Configure variables as follows...
+2. Run `terraform plan`
+3. Observe error...
+
+### Expected Behavior
+Should create resources without errors
+
+### Actual Behavior
+Error message:
+\`\`\`
+[complete error text]
+\`\`\`
+
+### Environment
+- Terraform version: 1.5.0
+- GCP SDK version: 455.0.0
+- Region: us-central1
+- Configuration: [relevant variables]
+```
+
+## 📄 License
+
+This project is proprietary and maintained by Konecta. 
+
+**Terms of Use**:
+- Use only within authorized Konecta projects
+- Do not distribute or share without explicit permission
+- Do not use for competing interests
+- Comply with GCP terms of service and organizational policies
+
+For licensing questions, contact: [your-team@konecta.com]
+
+## 📞 Support
+
+### Getting Help
+
+**For Questions**:
+- Check [Troubleshooting](#troubleshooting) section first
+- Review [Configuration Guide](#configuration-guide)
+- Check module-specific READMEs
+
+**For Bug Reports**:
+- File issue in repository with details
+- Include Terraform and GCP version information
+- Provide exact error messages and steps to reproduce
+
+**For Feature Requests**:
+- Open discussion in repository
+- Describe use case and expected behavior
+- Link to relevant GCP or Kubernetes documentation
+
+### Team Contact
+
+- **Project Owner**: [your-name@konecta.com]
+- **Infrastructure Team**: [infra-team@konecta.com]
+- **GCP Admin**: [gcp-admin@konecta.com]
+
+---
+
+<Callout type="success" title="Next Steps">
+
+Ready to deploy? Follow the [Quick Start Guide](#quick-start-guide) to get your CrewAI platform running on GCP in minutes!
+
+Questions? Check the [Configuration Guide](#configuration-guide) or [Troubleshooting](#troubleshooting) sections.
+
+</Callout>
+
+---
+
+**Last Updated**: December 29, 2025  
+**Version**: 1.0.0  
+**Status**: Production Ready ✅

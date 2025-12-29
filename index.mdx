@@ -9,45 +9,163 @@ Welcome to the Infrastructure as Code (IaC) documentation for the Google Cloud P
 
 ## What is This Documentation?
 
-This repository contains everything you need to understand, deploy, and manage the Google Cloud infrastructure that supports our Agentic AI platform. Whether you're a developer, DevOps engineer, or architect, you'll find detailed information about:
+This repository contains everything you need to understand, deploy, and manage the Google Cloud infrastructure that supports our Agentic AI platform.
 
-- **Architecture Design**: High-level and detailed architecture diagrams and blueprints
-- **Terraform Code**: Infrastructure as Code definitions and modules
-- **Deployment Guides**: Step-by-step instructions for provisioning infrastructure
-- **Operational Procedures**: Monitoring, logging, and incident response
-- **Security & Compliance**: IAM, data protection, and compliance standards
+<CardGroup cols={2}>
+  <Card title="Architecture Design" icon="diagram-project">
+    High-level and detailed architecture diagrams and blueprints
+  </Card>
+  <Card title="Terraform Code" icon="code">
+    Infrastructure as Code definitions and modules
+  </Card>
+  <Card title="Deployment Guides" icon="rocket">
+    Step-by-step instructions for provisioning infrastructure
+  </Card>
+  <Card title="Operational Procedures" icon="sliders-horizontal">
+    Monitoring, logging, and incident response
+  </Card>
+  <Card title="Security & Compliance" icon="shield">
+    IAM, data protection, and compliance standards
+  </Card>
+</CardGroup>
 
 ## Key Technologies
 
 Our infrastructure leverages:
 
-- **Google Cloud Platform (GCP)**: Core cloud infrastructure provider
-- **Terraform**: Infrastructure as Code tool for provisioning and managing resources
-- **11Labs**: AI voice synthesis and text-to-speech services
-- **CrewAI**: Multi-agent AI orchestration framework
-- **Agentic AI Solutions**: Autonomous AI agents for customer operations
+<CardGroup cols={2}>
+  <Card title="Google Cloud Platform (GCP)" icon="cloud">
+    Core cloud infrastructure provider
+  </Card>
+  <Card title="Terraform" icon="cube">
+    Infrastructure as Code tool
+  </Card>
+  <Card title="11Labs" icon="volume-2">
+    AI voice synthesis and text-to-speech
+  </Card>
+  <Card title="CrewAI" icon="network">
+    Multi-agent AI orchestration framework
+  </Card>
+  <Card title="Kubernetes (GKE)" icon="container">
+    Container orchestration platform
+  </Card>
+  <Card title="PostgreSQL" icon="database">
+    Enterprise-grade database
+  </Card>
+</CardGroup>
 
 ## Who Should Use This Documentation?
 
-- **Infrastructure Engineers**: Deploying and maintaining cloud resources
-- **Developers**: Integrating with AI services and understanding the platform
-- **DevOps Engineers**: Setting up CI/CD pipelines and automation
-- **Security Engineers**: Implementing and auditing security controls
-- **Architects**: Understanding system design and making architectural decisions
+<CardGroup cols={2}>
+  <Card title="Infrastructure Engineers" icon="construction">
+    Deploying and maintaining cloud resources
+  </Card>
+  <Card title="Developers" icon="code">
+    Integrating with AI services and understanding the platform
+  </Card>
+  <Card title="DevOps Engineers" icon="settings">
+    Setting up CI/CD pipelines and automation
+  </Card>
+  <Card title="Security Engineers" icon="lock">
+    Implementing and auditing security controls
+  </Card>
+  <Card title="Architects" icon="blueprint">
+    Understanding system design and making architectural decisions
+  </Card>
+</CardGroup>
 
 ## Documentation Structure
 
 This documentation is organized into the following sections:
 
-1. **Get Started**: Overview, introduction, and quickstart guides
-2. **Architecture**: Design principles, diagrams, and blueprints
-3. **Terraform**: IaC structure, modules, and best practices
-4. **Developer Guide**: Setup, deployment, and development workflows
-5. **Services & Components**: Detailed documentation for each GCP service
-6. **Security & Compliance**: Security controls and compliance requirements
-7. **CI/CD**: Continuous integration and deployment pipelines
-8. **Operations**: Monitoring, logging, and operational procedures
-9. **Reference**: Glossary, FAQ, and API references
+<Tabs>
+  <Tab title="Get Started">
+    - **Overview**: High-level introduction to the platform
+    - **Introduction**: This page
+    - **Quickstart**: 30-minute setup guide
+  </Tab>
+  <Tab title="Architecture">
+    - Design principles and patterns
+    - Component diagrams
+    - Blueprints and reference architecture
+    - Networking design
+    - Security architecture
+  </Tab>
+  <Tab title="Terraform">
+    - IaC directory structure
+    - Modules and their purpose
+    - Variables and outputs
+    - State management
+    - Best practices and patterns
+  </Tab>
+  <Tab title="Developer Guide">
+    - Prerequisites and setup
+    - Local development environment
+    - Deployment procedures
+    - Authentication integration
+    - Testing strategies
+  </Tab>
+  <Tab title="Operations">
+    - Monitoring and alerting
+    - Logging configuration
+    - Incident response procedures
+    - Backup and recovery
+    - Change management
+  </Tab>
+  <Tab title="Reference">
+    - API reference documentation
+    - Glossary of terms
+    - FAQ and troubleshooting
+    - Changelog
+  </Tab>
+</Tabs>
+
+## Quick Navigation
+
+<CardGroup cols={3}>
+  <Card title="📚 Architecture Overview" icon="diagram-project" href="/architecture/overview">
+    System design and infrastructure layout
+  </Card>
+  <Card title="🚀 Quickstart" icon="rocket" href="/quickstart">
+    Get started in 30 minutes
+  </Card>
+  <Card title="🛠️ Terraform Guide" icon="wrench" href="/terraform/overview">
+    Infrastructure as Code documentation
+  </Card>
+  <Card title="👨‍💻 Developer Guide" icon="code" href="/developer-guide/setup">
+    Local development setup
+  </Card>
+  <Card title="🔒 Security" icon="shield" href="/security/overview">
+    Security architecture and controls
+  </Card>
+  <Card title="📊 Operations" icon="activity" href="/operations/monitoring">
+    Monitoring and operational procedures
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Steps>
+  <Step title="Read the Overview">
+    Start with [Architecture Overview](/architecture/overview) to understand the system design
+  </Step>
+  <Step title="Follow the Quickstart">
+    Use the [Quickstart Guide](/quickstart) to deploy your first infrastructure
+  </Step>
+  <Step title="Explore Terraform">
+    Dive into [Terraform Documentation](/terraform/overview) for detailed IaC patterns
+  </Step>
+  <Step title="Set Up Local Environment">
+    Follow [Developer Guide](/developer-guide/setup) for local development
+  </Step>
+  <Step title="Secure Your Environment">
+    Review [Security Architecture](/security/overview) to implement best practices
+  </Step>
+</Steps>
+
+<Callout type="success" title="Ready to Get Started?">
+  Jump to the [Quickstart Guide](/quickstart) to deploy your infrastructure in less than 30 minutes!
+</Callout>
 
 ## Getting Started
 

@@ -106,6 +106,7 @@
       {
         "group": "CrewAi",
         "pages": [
+          "crewai/gcp-setup",
           "crewai/install",
           "crewai/post-install",
           "crewai/faq",
